@@ -143,7 +143,7 @@ def _claim(e: EvidenceItem) -> str:
         return e.title
     f = figs[0]
     val = f.get("value")
-    num = (f"{val:g}" if val is not None else f"{f.get('low'):g} to {f.get('high'):g}")
+    num = (f"{val:,.10g}" if val is not None else f"{f.get('low'):,.10g} to {f.get('high'):,.10g}")
     unit = (f.get("unit") or "").strip()
     return (f"{num}{unit}" if unit.startswith("%") else f"{num} {unit}").strip() + (f" ({f['period']})" if f.get("period") else "")
 

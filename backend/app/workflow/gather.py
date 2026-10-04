@@ -190,6 +190,31 @@ def edit_source_plan(case_id: int, rows: list[dict]) -> None:
                      "; ".join(msgs))
 
 
+def edit_query(case_id: int, ref: str, query: str) -> list[str]:
+    """The consultant may edit a search, but can never reintroduce a blocked private term."""
+    query = (query or "").strip()
+    if not query:
+        raise BadInput("Type a search first.")
+    with session() as s:
+        case = C.get_case(s, case_id)
+        require(s, case, "edit_source_plan")
+        n = s.exec(select(EvidenceNeed).where(EvidenceNeed.case_id == case_id, EvidenceNeed.ref == ref)).first()
+        if not n or n.route != "desk":
+            raise BadInput("We couldn't find that search. Refresh the page and try again.")
+        blocked = privacy.check(query, C.deny_list(s, case))
+        if blocked:
+            raise GateError("This search still contains a private term: " + ", ".join(blocked)
+                            + ". Remove it and try again.", blocked)
+        rows = [dict(r) for r in n.queries_json or []] or [{"original": n.text, "sanitised": n.text, "removed": []}]
+        rows[0].update(query=query, blocked=[], edited_by_consultant=True)
+        n.queries_json = rows
+        s.add(n)
+        s.commit()
+    activity.log(case_id, "consultant", "query_edited", 4, f"Edited the search for {ref}. It contains no private terms.",
+                 {"query": query})
+    return []
+
+
 def mark_sent(case_id: int, reviewed: bool):
     with session() as s:
         case = C.get_case(s, case_id)

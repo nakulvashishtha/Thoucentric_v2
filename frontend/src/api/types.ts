@@ -54,4 +54,4 @@ export interface Bundle {
   progress: { steps: StepState[]; current: number; done: Record<string, boolean>; reopened: string[] };
   review: any; counts: any; sample_replies: Record<string, string>; jobs: Record<string, Job>; running_jobs: string[]; sliders: SliderDef[]; rules: any;
 }
-export interface ActivityRow { id: number; ts: string; actor: Actor; event_type: string; step: number; message: string }
+export interface ActivityRow { id: number; ts: string; actor: Actor; event_type: string; step: number; message: string; payload_json?: any }

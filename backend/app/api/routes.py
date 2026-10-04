@@ -156,6 +156,12 @@ def get_needs(cid: int):
     return bundle.build(cid)["needs"]
 
 
+@router.put("/cases/{cid}/needs/{ref}/query")
+def edit_query(cid: int, ref: str, body: dict):
+    gather.edit_query(cid, ref, body.get("query", ""))
+    return ok()
+
+
 @router.post("/cases/{cid}/needs/retry")
 def retry_route(cid: int):
     return ok(job=jv(gather.start_route(cid)))

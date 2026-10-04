@@ -418,7 +418,7 @@ def start_addup(case_id: int):
         for g in gaps:
             if not any(x["idea"] == g["code"] for x in unknowns):
                 conf = f", confidence {V.CONFIDENCE_LABELS[g['confidence']]}" if g["confidence"] != "none" else ""
-                unknowns.append({"idea": g["code"], "text": f"{g['code']} ({RESULT_LABELS[g['result']]}{conf}) rests on "
+                unknowns.append({"idea": g["code"], "text": f"The result ({RESULT_LABELS[g['result']]}{conf}) rests on "
                                  "thin or close-call evidence. More evidence would settle it."})
         with session() as s:
             summ = s.get(Summary, case_id)

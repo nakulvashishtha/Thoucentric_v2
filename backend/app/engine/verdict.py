@@ -110,7 +110,7 @@ def evaluate(figs: list[Fig], L: float, cmp: str, tol_pct: float, fact_type: str
             codes.append("BOUNDARY")
             parts = []
             if straddle:
-                parts.append(f"{_join(straddle)} span{'s' if len(straddle) == 1 else ''} the target")
+                parts.append(f"the range {_join(straddle)} include{'s' if len(straddle) == 1 else ''} the target")
             if near:
                 parts.append(f"{_join(near)} {'is' if len(near) == 1 else 'are'} within the {fmt(tol_pct)}% "
                              "close-call margin")

@@ -117,3 +117,20 @@ def test_case_reset_and_delete(client):
     assert r.case()["frame"] is None and r.case()["progress"]["current"] == 1
     r.call("DELETE", "")
     assert client.get(f"/api/cases/{r.cid}").status_code == 404
+
+
+def test_an_edited_search_cannot_bring_back_a_private_term(client):
+    from tests.e2e.script_runner import Runner
+    r = Runner(client, "sample_01_card_launch")
+    res = client.post("/api/samples/sample_01_card_launch/load")
+    r.cid = res.json()["id"]
+    r.call("POST", "/read-ask"); r.wait("frame")
+    r.call("POST", "/frame/confirm"); r.wait("plan")
+    r.call("PUT", "/hypotheses", json=[{"code": "H5", "removed_reason": "not needed"}])
+    r.call("POST", "/plan/lock", json={"ticked": True}); r.wait("route")
+    bad = client.put(f"/api/cases/{r.cid}/needs/N1/query", json={"query": "Example Client card growth"})
+    assert bad.status_code == 409 and "Example Client" in bad.json()["required"]
+    good = client.put(f"/api/cases/{r.cid}/needs/N1/query", json={"query": "India card growth forecast"})
+    assert good.status_code == 200
+    n1 = next(n for n in r.case()["needs"] if n["ref"] == "N1")
+    assert n1["queries_json"][0]["query"] == "India card growth forecast"

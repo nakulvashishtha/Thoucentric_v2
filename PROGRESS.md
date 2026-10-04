@@ -1,14 +1,14 @@
 # Progress
 
-**Current:** Milestone B (Stage 2 = checkpoints 4 and 5) built; waiting for the user's approval of the output.
+**Current:** Milestone B approved (tag milestone-B-approved). Next: checkpoint 6 after the user deploys and runs a live case.
 
 | Checkpoint | Status |
 |---|---|
 | 1 Rule engine + unit tests | Done (tag milestone-A-approved) |
 | 2 DB, state machine (409 gates), API, fixtures, Sample 1, scripted run | Done (tag milestone-A-approved) |
 | 3a + 3b All 12 screens, copy.ts + copy test, brief, exports, visual QA | Done (tag milestone-A-approved) |
-| 4 Live layer, caps, passcode, self-check, Sample 2 | Done (commit "Checkpoint 4") |
-| 5 Dockerfile, render.yaml, .env.example, RUNBOOK, DEMO, pre-flight | Done (commit "Checkpoint 5") |
+| 4 Live layer, caps, passcode, self-check, Sample 2 | Done (tag milestone-B-approved) |
+| 5 Dockerfile, render.yaml, .env.example, RUNBOOK, DEMO, pre-flight | Done (tag milestone-B-approved) |
 | 6 Fixes from live testing, Stage 3 extras | Not started (needs the user's live test) |
 
 **Decisions (defaults chosen where the prompt was silent)**

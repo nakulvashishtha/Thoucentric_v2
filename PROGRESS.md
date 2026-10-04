@@ -20,7 +20,7 @@
 - Skip to step (sample cases) replays the recorded answers through the normal gates and never writes the conclusion.
 - Copies get status "duplicate" (shown as "Duplicate of E#") and are left out of the decision group.
 
-**Known issues:** push to GitHub `Thoucentric_v2` is refused until the Claude GitHub App is installed on that repo.
+**Known issues:** none open.
 Google Fonts are blocked in the build sandbox, so screenshots use the Arial fallback.
 
 **Commands:** `make install && make build && make run` (app on :8000) · `make test` (88 tests) · screenshots in `docs/screenshots/`.

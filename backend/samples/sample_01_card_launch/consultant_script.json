@@ -1,0 +1,69 @@
+{
+  "description": "Generic consultant actions for automated runs. Decisions are made by rule, never by evidence id.",
+  "frame": "confirm",
+  "remove_ideas": [
+    {
+      "code": "H5",
+      "reason": "History of credit cards in India would not change the decision"
+    }
+  ],
+  "lock_plan": true,
+  "step4": {
+    "tick_review": true,
+    "mark_sent": true
+  },
+  "review": {
+    "mark_all_auto_approved_seen": true,
+    "tick_sources_box": true,
+    "confirm_all_derivations": true,
+    "spot_check": "matches",
+    "rules": [
+      {
+        "match": {
+          "matches_belief": true
+        },
+        "action": "keep_belief"
+      },
+      {
+        "match": {
+          "script_tag": "belief"
+        },
+        "action": "keep_belief"
+      },
+      {
+        "match": {
+          "script_tag": "cross_check"
+        },
+        "action": "keep_cross_check"
+      },
+      {
+        "match": {
+          "script_tag": "reject_no_method"
+        },
+        "action": "reject",
+        "reason": "No method shown"
+      },
+      {
+        "match": {
+          "origin_type": "client_file"
+        },
+        "action": "keep_client_reported"
+      },
+      {
+        "match": {
+          "status": "needs_decision"
+        },
+        "action": "approve"
+      }
+    ]
+  },
+  "trips": [
+    {
+      "idea": "H2",
+      "reply_file": "pilot_costs.xlsx",
+      "decide": "keep_client_reported",
+      "confirm_formula": true
+    }
+  ],
+  "conclusion": "The launch should not go ahead on the current plan: the market does not grow fast enough to reach the agreed target. Re-test with a narrower plan focused on existing customers."
+}

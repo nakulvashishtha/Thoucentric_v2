@@ -1,0 +1,26 @@
+# Source credibility tiers, matched by domain suffix or wildcard. Unknown domains are Tier 4.
+# Tier 1: regulators, official statistics, company filings
+# Tier 2: paid research databases, the firm's own archive, recognised industry bodies, studies with a named method
+# Tier 3: reputable business press and named analysts
+# Tier 4: blogs, forums, anonymous or unknown domains and aggregators
+global:
+  tier1: ["*.gov", "*.gov.*", "*.int", "*.mil", "europa.eu", "*.europa.eu", "un.org", "*.un.org",
+          "worldbank.org", "*.worldbank.org", "imf.org", "*.imf.org", "oecd.org", "*.oecd.org",
+          "bis.org", "wto.org", "who.int", "sec.gov", "*.gc.ca", "*.gouv.fr", "*.go.jp"]
+  tier2: ["*.ac.*", "*.edu", "mckinsey.com", "bcg.com", "bain.com", "gartner.com", "idc.com",
+          "euromonitor.com", "statista.com", "nielsen.com", "iea.org", "gsma.com"]
+  tier3: ["reuters.com", "ft.com", "bloomberg.com", "wsj.com", "economist.com", "apnews.com",
+          "bbc.co.uk", "bbc.com", "cnbc.com", "forbes.com", "fortune.com", "nytimes.com"]
+  tier4: ["medium.com", "*.medium.com", "reddit.com", "quora.com", "*.blogspot.com", "*.wordpress.com",
+          "substack.com", "*.substack.com", "wikipedia.org", "*.wikipedia.org", "linkedin.com"]
+countries:
+  IN:
+    names: [India, Bharat]
+    tier1: ["rbi.org.in", "*.rbi.org.in", "*.gov.in", "*.nic.in", "sebi.gov.in", "mospi.gov.in",
+            "irdai.gov.in", "trai.gov.in", "bseindia.com", "nseindia.com", "mca.gov.in", "pib.gov.in"]
+    tier2: ["npci.org.in", "iba.org.in", "ficci.in", "cii.in", "nasscom.in", "assocham.org", "crisil.com",
+            "icra.in", "careratings.com", "*.iim*.ac.in", "*.iit*.ac.in"]
+    tier3: ["economictimes.indiatimes.com", "livemint.com", "business-standard.com",
+            "thehindubusinessline.com", "financialexpress.com", "moneycontrol.com", "thehindu.com"]
+    tier4: []
+industries: {}

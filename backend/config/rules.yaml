@@ -1,0 +1,51 @@
+# All thresholds used by the rule engine. Read-only in the app; locked into each case at step 3.
+tolerance_pct_default: 5
+
+recency_months:
+  size_growth_price: 36      # size, growth and price figures
+  structural_timing: 60      # structural or timing figures
+
+checklist:
+  allowed_tiers: [1, 2]          # Tier 3 only if traced and corroborated; Tier 4 never
+  tier3_needs_corroboration: true
+  never_auto_approve_origins: [client_file, expert_note]   # open-web pages pass only as Tier 1 or 2
+
+minimum_sources:
+  market: 2
+  client_operational: 1
+
+spot_check:
+  fraction: 0.20
+  minimum: 2
+
+trips:
+  free: 2
+  max_with_override: 3
+
+dedup:
+  similarity_threshold: 0.8
+
+sample_mix:
+  max_difference_pct_points: 10
+
+adding_up_rule: >-
+  If any must-have idea fails: not achievable at the agreed pass line.
+  Else if any must-have idea is conflicting or has not enough evidence: the consultant decides.
+  Else: achievable.
+
+sliders:
+  default_range_pct: 50
+  zero_value_range: [-10, 10]
+  non_negative_units: [percent, "percent per year", months, years, days, count, amount]
+
+fast_demo:
+  max_sources_per_need: 4
+  search_concurrency: 6
+  extraction_concurrency: 6
+  call_timeout_seconds: 40
+  retries: 1
+
+limits:
+  max_page_chars: 8000
+  max_upload_mb: 20
+  max_ideas: 8

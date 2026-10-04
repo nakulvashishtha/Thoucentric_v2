@@ -1,0 +1,94 @@
+{
+  "title": "Credit card launch, India (sample)",
+  "description": "A consumer lender tests whether it can launch a credit card profitably. Pinned sample used for tests and demos.",
+  "details": {
+    "client_name": "Example Client Ltd",
+    "client_aliases": [
+      "Example Client",
+      "ECL"
+    ],
+    "private_numbers": [
+      "Rs 1,500 crore launch budget",
+      "4.6 lakh active savings customers"
+    ],
+    "country": "India",
+    "industry": "Consumer lending",
+    "function": "Growth strategy",
+    "raw_ask": "Example Client Ltd wants to launch a credit card in India. They believe the number of credit cards is growing about 30% a year, so they can enter the market profitably."
+  },
+  "client_files": [
+    {
+      "filename": "board_note.txt",
+      "kind": "initial"
+    },
+    {
+      "filename": "acquisition_analysis.csv",
+      "kind": "initial"
+    },
+    {
+      "filename": "customer_base.xlsx",
+      "kind": "initial"
+    }
+  ],
+  "source_plan": [
+    {
+      "source_name": "Reserve Bank of India statistics",
+      "domain": "rbi.org.in",
+      "origin_type": "open_web",
+      "included": true
+    },
+    {
+      "source_name": "Simulated card market database",
+      "domain": "carddata.sample",
+      "origin_type": "paid_db",
+      "included": true
+    },
+    {
+      "source_name": "Firm research archive",
+      "domain": "",
+      "origin_type": "firm_archive",
+      "included": true
+    },
+    {
+      "source_name": "Business press (sample outlets)",
+      "domain": "press.sample",
+      "origin_type": "open_web",
+      "included": true,
+      "stated_tier": 3,
+      "reason": "Named business outlets with editors, used in this sample"
+    },
+    {
+      "source_name": "Open web search",
+      "domain": "",
+      "origin_type": "open_web",
+      "included": true
+    },
+    {
+      "source_name": "Social media and forums",
+      "domain": "forum.sample",
+      "origin_type": "open_web",
+      "included": false,
+      "removed_reason": "Not credible enough for a launch decision"
+    }
+  ],
+  "trips": {
+    "H2": {
+      "reply_file": "pilot_costs.xlsx",
+      "sample_mix": {
+        "dimensions": [
+          "existing customers",
+          "new customers"
+        ],
+        "sample": {
+          "existing customers": 42,
+          "new customers": 58
+        },
+        "target": {
+          "existing customers": 42,
+          "new customers": 58
+        },
+        "target_note": "National mix of target customers (customer base file)"
+      }
+    }
+  }
+}

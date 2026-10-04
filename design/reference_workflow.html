@@ -1,0 +1,169 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Research Agent Workflow</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600;700&display=swap">
+<style>
+body{margin:0;background:#f4f6fa;font-family:"IBM Plex Sans","Segoe UI",Arial,sans-serif;color:#16213a}
+.wrap{max-width:1360px;margin:0 auto;padding:22px 20px 30px}
+h1{margin:0 0 4px;font-size:24px;color:#0f2747}
+.sub{margin:0 0 14px;color:#5b6a80;font-size:14.5px}
+.key{display:flex;flex-wrap:wrap;gap:8px 16px;font-size:13px;margin-bottom:12px;align-items:center}
+.chip{padding:2px 10px;border-radius:99px;font-weight:600;font-size:12px}
+.card{background:#fff;border:1px solid #d7dee8;border-radius:14px;padding:8px;overflow-x:auto}
+svg{width:100%;height:auto;min-width:900px;display:block}
+svg .num{font-size:15px;font-weight:700;fill:#fff} svg .nm{font-size:15px;font-weight:700;fill:#fff}
+svg .ph{font-size:9.5px;font-weight:700;fill:#ffffffb3;letter-spacing:.08em}
+svg .who{font-size:11px;font-weight:700} svg .tx{font-size:12.5px;fill:#16213a;white-space:pre}
+svg .gt{font-size:11px;font-weight:700;fill:#fff} svg .lp{font-size:12px;font-weight:700;fill:#c4570f}
+.foot{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px;font-size:13.5px}
+.foot div{background:#fff;border:1px solid #d7dee8;border-radius:10px;padding:10px 13px}
+@media(max-width:900px){.foot{grid-template-columns:1fr}}
+</style></head><body><div class="wrap">
+<h1>How the research agent works</h1>
+<p class="sub">Twelve steps. Follow the arrows. Boxes with a coloured border and a ✓ are where a person must sign off before the work moves on.</p>
+<div class="key">
+<span class="chip" style="color:#c4570f;background:#fff0e3">Consultant</span>
+<span class="chip" style="color:#6b46c1;background:#f1ebff">AI: reads, sorts, writes</span>
+<span class="chip" style="color:#1d5fc4;background:#e8f0ff">Rules: maths, checks, verdicts</span>
+<span class="chip" style="color:#0f7a73;background:#e2f5f3">Client</span>
+<span class="chip" style="color:#3f7d20;background:#ecf6e5">Experts</span>
+<span style="margin-left:12px">Box colour:</span><span class="chip" style="background:#0f2747;color:#fff">Frame the question</span><span class="chip" style="background:#0f6e73;color:#fff">Gather and check</span><span class="chip" style="background:#5b3a9e;color:#fff">Work out what it means</span>
+</div>
+<div class="card"><svg viewBox="0 0 1392 826" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Research agent workflow">
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#5b6a80"/></marker>
+<marker id="o" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#e9771a"/></marker></defs>
+<path d="M320 130.0 L381 130.0" stroke="#5b6a80" stroke-width="2.5" fill="none" marker-end="url(#a)"/>
+<path d="M664 130.0 L725 130.0" stroke="#5b6a80" stroke-width="2.5" fill="none" marker-end="url(#a)"/>
+<path d="M1008 130.0 L1069 130.0" stroke="#5b6a80" stroke-width="2.5" fill="none" marker-end="url(#a)"/>
+<path d="M1212.0 230 L1212.0 269.0 L180.0 269.0 L180.0 305" stroke="#5b6a80" stroke-width="2.5" fill="none" marker-end="url(#a)"/>
+<path d="M320 408.0 L381 408.0" stroke="#5b6a80" stroke-width="2.5" fill="none" marker-end="url(#a)"/>
+<path d="M664 408.0 L725 408.0" stroke="#5b6a80" stroke-width="2.5" fill="none" marker-end="url(#a)"/>
+<path d="M1008 408.0 L1069 408.0" stroke="#5b6a80" stroke-width="2.5" fill="none" marker-end="url(#a)"/>
+<path d="M1212.0 508 L1212.0 547.0 L180.0 547.0 L180.0 583" stroke="#5b6a80" stroke-width="2.5" fill="none" marker-end="url(#a)"/>
+<path d="M320 686.0 L381 686.0" stroke="#5b6a80" stroke-width="2.5" fill="none" marker-end="url(#a)"/>
+<path d="M664 686.0 L725 686.0" stroke="#5b6a80" stroke-width="2.5" fill="none" marker-end="url(#a)"/>
+<path d="M1008 686.0 L1069 686.0" stroke="#5b6a80" stroke-width="2.5" fill="none" marker-end="url(#a)"/>
+<path d="M258.4 586 L258.4 562.6 L1374 562.6 L1374 458.0 L1355 458.0" stroke="#e9771a" stroke-width="2.2" stroke-dasharray="7 5" fill="none" marker-end="url(#o)"/>
+<text x="1368" y="554.6" class="lp" text-anchor="end">test again</text>
+<rect x="40" y="30" width="280" height="200" rx="12" fill="#fff" stroke="#cfd8e3" stroke-width="1.3"/>
+<path d="M40 42 a12 12 0 0 1 12 -12 h256 a12 12 0 0 1 12 12 v22 h-280 z" fill="#0f2747"/>
+<text x="54" y="53" class="num">1</text><text x="76" y="53" class="nm">Enter the request</text>
+<rect x="52" y="74" width="82.0" height="20" rx="10" fill="#fff0e3"/><text x="93.0" y="88" class="who" fill="#c4570f" text-anchor="middle">Consultant</text>
+<text x="54" y="114" class="tx">• Enter client, country, industry and</text>
+<text x="54" y="130" class="tx">  function.</text>
+<text x="54" y="150" class="tx">• Type the client&#x27;s goal in their own</text>
+<text x="54" y="166" class="tx">  words.</text>
+<rect x="384" y="30" width="280" height="200" rx="12" fill="#fff" stroke="#c4570f" stroke-width="2.6"/>
+<path d="M384 42 a12 12 0 0 1 12 -12 h256 a12 12 0 0 1 12 12 v22 h-280 z" fill="#0f2747"/>
+<text x="398" y="53" class="num">2</text><text x="420" y="53" class="nm">Frame the question</text>
+<rect x="396" y="74" width="29.2" height="20" rx="10" fill="#f1ebff"/><text x="410.6" y="88" class="who" fill="#6b46c1" text-anchor="middle">AI</text>
+<rect x="431.2" y="74" width="82.0" height="20" rx="10" fill="#fff0e3"/><text x="472.2" y="88" class="who" fill="#c4570f" text-anchor="middle">Consultant</text>
+<text x="398" y="114" class="tx">• AI separates what the client believes</text>
+<text x="398" y="130" class="tx">  from the decision they must make.</text>
+<text x="398" y="150" class="tx">• Fixes one way to measure the market.</text>
+<rect x="396" y="200" width="149.7" height="20" rx="10" fill="#c4570f"/><text x="470.85" y="214" class="gt" text-anchor="middle">✓ Consultant confirms</text>
+<rect x="728" y="30" width="280" height="200" rx="12" fill="#fff" stroke="#c4570f" stroke-width="2.6"/>
+<path d="M728 42 a12 12 0 0 1 12 -12 h256 a12 12 0 0 1 12 12 v22 h-280 z" fill="#0f2747"/>
+<text x="742" y="53" class="num">3</text><text x="764" y="53" class="nm">Agree the plan</text>
+<rect x="740" y="74" width="29.2" height="20" rx="10" fill="#f1ebff"/><text x="754.6" y="88" class="who" fill="#6b46c1" text-anchor="middle">AI</text>
+<rect x="775.2" y="74" width="49.0" height="20" rx="10" fill="#e8f0ff"/><text x="799.7" y="88" class="who" fill="#1d5fc4" text-anchor="middle">Rules</text>
+<rect x="830.2" y="74" width="82.0" height="20" rx="10" fill="#fff0e3"/><text x="871.2" y="88" class="who" fill="#c4570f" text-anchor="middle">Consultant</text>
+<text x="742" y="114" class="tx">• AI lists ideas to test. Rules set a pass</text>
+<text x="742" y="130" class="tx">  line for each, with its benchmark</text>
+<text x="742" y="146" class="tx">  source.</text>
+<text x="742" y="166" class="tx">• Must-haves, adding-up rule and checklist</text>
+<text x="742" y="182" class="tx">  agreed.</text>
+<rect x="740" y="200" width="187.5" height="20" rx="10" fill="#c4570f"/><text x="833.75" y="214" class="gt" text-anchor="middle">✓ Consultant locks the plan</text>
+<rect x="1072" y="30" width="280" height="200" rx="12" fill="#fff" stroke="#c4570f" stroke-width="2.6"/>
+<path d="M1072 42 a12 12 0 0 1 12 -12 h256 a12 12 0 0 1 12 12 v22 h-280 z" fill="#0f6e73"/>
+<text x="1086" y="53" class="num">4</text><text x="1108" y="53" class="nm">Plan the evidence</text>
+<rect x="1084" y="74" width="29.2" height="20" rx="10" fill="#f1ebff"/><text x="1098.6" y="88" class="who" fill="#6b46c1" text-anchor="middle">AI</text>
+<rect x="1119.2" y="74" width="49.0" height="20" rx="10" fill="#e8f0ff"/><text x="1143.7" y="88" class="who" fill="#1d5fc4" text-anchor="middle">Rules</text>
+<rect x="1174.2" y="74" width="82.0" height="20" rx="10" fill="#fff0e3"/><text x="1215.2" y="88" class="who" fill="#c4570f" text-anchor="middle">Consultant</text>
+<text x="1086" y="114" class="tx">• Client data already sent is used first.</text>
+<text x="1086" y="130" class="tx">  Only gaps are requested.</text>
+<text x="1086" y="150" class="tx">• Sources grouped by credibility tier.</text>
+<text x="1086" y="166" class="tx">  Private details removed before anything</text>
+<text x="1086" y="182" class="tx">  leaves.</text>
+<rect x="1084" y="200" width="187.5" height="20" rx="10" fill="#c4570f"/><text x="1177.75" y="214" class="gt" text-anchor="middle">✓ Consultant sends requests</text>
+<rect x="40" y="308" width="280" height="200" rx="12" fill="#fff" stroke="#cfd8e3" stroke-width="1.3"/>
+<path d="M40 320 a12 12 0 0 1 12 -12 h256 a12 12 0 0 1 12 12 v22 h-280 z" fill="#0f6e73"/>
+<text x="54" y="331" class="num">5</text><text x="76" y="331" class="nm">Collect</text>
+<rect x="52" y="352" width="29.2" height="20" rx="10" fill="#f1ebff"/><text x="66.6" y="366" class="who" fill="#6b46c1" text-anchor="middle">AI</text>
+<rect x="87.2" y="352" width="49.0" height="20" rx="10" fill="#e8f0ff"/><text x="111.7" y="366" class="who" fill="#1d5fc4" text-anchor="middle">Rules</text>
+<rect x="142.2" y="352" width="55.599999999999994" height="20" rx="10" fill="#e2f5f3"/><text x="170.0" y="366" class="who" fill="#0f7a73" text-anchor="middle">Client</text>
+<rect x="203.79999999999998" y="352" width="62.199999999999996" height="20" rx="10" fill="#ecf6e5"/><text x="234.89999999999998" y="366" class="who" fill="#3f7d20" text-anchor="middle">Experts</text>
+<text x="54" y="392" class="tx">• Web, firm archive and paid databases</text>
+<text x="54" y="408" class="tx">  searched at once.</text>
+<text x="54" y="428" class="tx">• Missing items stay marked pending.</text>
+<rect x="384" y="308" width="280" height="200" rx="12" fill="#fff" stroke="#cfd8e3" stroke-width="1.3"/>
+<path d="M384 320 a12 12 0 0 1 12 -12 h256 a12 12 0 0 1 12 12 v22 h-280 z" fill="#0f6e73"/>
+<text x="398" y="331" class="num">6</text><text x="420" y="331" class="nm">Clean</text>
+<rect x="396" y="352" width="29.2" height="20" rx="10" fill="#f1ebff"/><text x="410.6" y="366" class="who" fill="#6b46c1" text-anchor="middle">AI</text>
+<rect x="431.2" y="352" width="49.0" height="20" rx="10" fill="#e8f0ff"/><text x="455.7" y="366" class="who" fill="#1d5fc4" text-anchor="middle">Rules</text>
+<text x="398" y="392" class="tx">• Numbers pulled out and put on the idea&#x27;s</text>
+<text x="398" y="408" class="tx">  measure.</text>
+<text x="398" y="428" class="tx">• Copies counted once. Each source graded</text>
+<text x="398" y="444" class="tx">  for credibility. All maths in code.</text>
+<rect x="728" y="308" width="280" height="200" rx="12" fill="#fff" stroke="#c4570f" stroke-width="2.6"/>
+<path d="M728 320 a12 12 0 0 1 12 -12 h256 a12 12 0 0 1 12 12 v22 h-280 z" fill="#0f6e73"/>
+<text x="742" y="331" class="num">7</text><text x="764" y="331" class="nm">Review</text>
+<rect x="740" y="352" width="49.0" height="20" rx="10" fill="#e8f0ff"/><text x="764.5" y="366" class="who" fill="#1d5fc4" text-anchor="middle">Rules</text>
+<rect x="795.0" y="352" width="82.0" height="20" rx="10" fill="#fff0e3"/><text x="836.0" y="366" class="who" fill="#c4570f" text-anchor="middle">Consultant</text>
+<text x="742" y="392" class="tx">• Checklist approves clear items and shows</text>
+<text x="742" y="408" class="tx">  each source. Some are spot-checked.</text>
+<text x="742" y="428" class="tx">• Consultant decides client claims, weak</text>
+<text x="742" y="444" class="tx">  items and key evidence.</text>
+<rect x="740" y="478" width="143.39999999999998" height="20" rx="10" fill="#c4570f"/><text x="811.7" y="492" class="gt" text-anchor="middle">✓ Consultant decides</text>
+<rect x="1072" y="308" width="280" height="200" rx="12" fill="#fff" stroke="#cfd8e3" stroke-width="1.3"/>
+<path d="M1072 320 a12 12 0 0 1 12 -12 h256 a12 12 0 0 1 12 12 v22 h-280 z" fill="#5b3a9e"/>
+<text x="1086" y="331" class="num">8</text><text x="1108" y="331" class="nm">Test</text>
+<rect x="1084" y="352" width="49.0" height="20" rx="10" fill="#e8f0ff"/><text x="1108.5" y="366" class="who" fill="#1d5fc4" text-anchor="middle">Rules</text>
+<text x="1086" y="392" class="tx">• Each idea compared with its pass line.</text>
+<text x="1086" y="412" class="tx">• Result: holds, fails, conflicting or not</text>
+<text x="1086" y="428" class="tx">  enough evidence, plus a confidence</text>
+<text x="1086" y="444" class="tx">  level.</text>
+<rect x="40" y="586" width="280" height="200" rx="12" fill="#fff" stroke="#c4570f" stroke-width="2.6"/>
+<path d="M40 598 a12 12 0 0 1 12 -12 h256 a12 12 0 0 1 12 12 v22 h-280 z" fill="#5b3a9e"/>
+<text x="54" y="609" class="num">9</text><text x="76" y="609" class="nm">Fill the gaps</text>
+<rect x="52" y="630" width="29.2" height="20" rx="10" fill="#f1ebff"/><text x="66.6" y="644" class="who" fill="#6b46c1" text-anchor="middle">AI</text>
+<rect x="87.2" y="630" width="82.0" height="20" rx="10" fill="#fff0e3"/><text x="128.2" y="644" class="who" fill="#c4570f" text-anchor="middle">Consultant</text>
+<rect x="175.2" y="630" width="55.599999999999994" height="20" rx="10" fill="#e2f5f3"/><text x="203.0" y="644" class="who" fill="#0f7a73" text-anchor="middle">Client</text>
+<rect x="236.79999999999998" y="630" width="62.199999999999996" height="20" rx="10" fill="#ecf6e5"/><text x="267.9" y="644" class="who" fill="#3f7d20" text-anchor="middle">Experts</text>
+<text x="54" y="670" class="tx">• Only thin ideas go back, with a narrower</text>
+<text x="54" y="686" class="tx">  question.</text>
+<text x="54" y="706" class="tx">• Answer comes in, idea is tested again.</text>
+<text x="54" y="722" class="tx">  Two trips max.</text>
+<rect x="52" y="756" width="256" height="20" rx="10" fill="#c4570f"/><text x="180.0" y="770" class="gt" text-anchor="middle">✓ Consultant sends · 3rd trip needs a reason</text>
+<rect x="384" y="586" width="280" height="200" rx="12" fill="#fff" stroke="#cfd8e3" stroke-width="1.3"/>
+<path d="M384 598 a12 12 0 0 1 12 -12 h256 a12 12 0 0 1 12 12 v22 h-280 z" fill="#5b3a9e"/>
+<text x="398" y="609" class="num">10</text><text x="420" y="609" class="nm">Add it up</text>
+<rect x="396" y="630" width="49.0" height="20" rx="10" fill="#e8f0ff"/><text x="420.5" y="644" class="who" fill="#1d5fc4" text-anchor="middle">Rules</text>
+<rect x="451.0" y="630" width="29.2" height="20" rx="10" fill="#f1ebff"/><text x="465.6" y="644" class="who" fill="#6b46c1" text-anchor="middle">AI</text>
+<text x="398" y="670" class="tx">• Locked adding-up rule gives the overall</text>
+<text x="398" y="686" class="tx">  answer.</text>
+<text x="398" y="706" class="tx">• AI writes a summary with a source for</text>
+<text x="398" y="722" class="tx">  every line. Rejected evidence stays</text>
+<text x="398" y="738" class="tx">  visible.</text>
+<rect x="728" y="586" width="280" height="200" rx="12" fill="#fff" stroke="#cfd8e3" stroke-width="1.3"/>
+<path d="M728 598 a12 12 0 0 1 12 -12 h256 a12 12 0 0 1 12 12 v22 h-280 z" fill="#5b3a9e"/>
+<text x="742" y="609" class="num">11</text><text x="764" y="609" class="nm">Stress-test</text>
+<rect x="740" y="630" width="82.0" height="20" rx="10" fill="#fff0e3"/><text x="781.0" y="644" class="who" fill="#c4570f" text-anchor="middle">Consultant</text>
+<text x="742" y="670" class="tx">• Shows which evidence the answer rests</text>
+<text x="742" y="686" class="tx">  on.</text>
+<text x="742" y="706" class="tx">• Change inputs to see what would flip it.</text>
+<text x="742" y="722" class="tx">  Lists what is still unknown.</text>
+<rect x="1072" y="586" width="280" height="200" rx="12" fill="#fff" stroke="#c4570f" stroke-width="2.6"/>
+<path d="M1072 598 a12 12 0 0 1 12 -12 h256 a12 12 0 0 1 12 12 v22 h-280 z" fill="#5b3a9e"/>
+<text x="1086" y="609" class="num">12</text><text x="1108" y="609" class="nm">Decide</text>
+<rect x="1084" y="630" width="82.0" height="20" rx="10" fill="#fff0e3"/><text x="1125.0" y="644" class="who" fill="#c4570f" text-anchor="middle">Consultant</text>
+<text x="1086" y="670" class="tx">• Consultant reads a one-page brief.</text>
+<text x="1086" y="690" class="tx">• Consultant writes the conclusion. The</text>
+<text x="1086" y="706" class="tx">  agent never does.</text>
+<rect x="1084" y="756" width="156.0" height="20" rx="10" fill="#c4570f"/><text x="1162.0" y="770" class="gt" text-anchor="middle">✓ Consultant concludes</text>
+</svg></div>
+<div class="foot">
+<div><b>AI</b> drafts, searches and writes. It never decides a result.</div>
+<div><b>Rules</b> are plain code. They do the maths, apply the locked plan and give every verdict.</div>
+<div><b>People</b> confirm, lock, send, review and sign. Every action is logged.</div>
+</div>
+</div></body></html>

@@ -1,0 +1,7 @@
+# US dollars per million tokens. Matched by substring of the model name set in MODEL_FAST / MODEL_SMART.
+models:
+  haiku:  {input: 1.0, output: 5.0}
+  sonnet: {input: 2.0, output: 10.0}
+default: {input: 3.0, output: 15.0}
+search:
+  tavily_basic_credit_usd: 0.008

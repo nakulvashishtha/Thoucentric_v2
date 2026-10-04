@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Research Workbench · User Journey</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+:root{
+  --bg:#f4f6fa; --panel:#ffffff; --soft:#eef2f7; --line:#d7dee8; --ink:#16213a; --muted:#5b6a80;
+  --navy:#0f2747; --accent:#e9771a;
+  --c-consultant:#c4570f; --c-consultant-bg:#fff0e3;
+  --c-model:#6b46c1;      --c-model-bg:#f1ebff;
+  --c-rule:#1d5fc4;       --c-rule-bg:#e8f0ff;
+  --c-client:#0f7a73;     --c-client-bg:#e2f5f3;
+  --c-expert:#3f7d20;     --c-expert-bg:#ecf6e5;
+  --pass:#15795a; --pass-bg:#e6f5ee; --fail:#b42318; --fail-bg:#fdebe8; --warn:#935700; --warn-bg:#fff3d9;
+  --sans:"IBM Plex Sans","Segoe UI",Arial,sans-serif; --mono:"IBM Plex Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{font-family:var(--sans);color:var(--ink);background:var(--bg);display:flex;flex-direction:column}
+
+/* ===== TOP HALF: reserved for the back-end animation (built separately) ===== */
+#backend-panel{flex:1 1 50%;min-height:0;border-bottom:2px solid var(--line);background:var(--bg);
+  display:flex;align-items:center;justify-content:center;color:#9aa6b8;font-size:13px;letter-spacing:.06em;text-transform:uppercase}
+
+/* ===== BOTTOM HALF: user journey ===== */
+#journey{flex:1 1 50%;min-height:440px;display:flex;flex-direction:column;padding:10px 18px 12px;gap:8px;background:var(--bg)}
+.jhead{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.jtitle{font-weight:700;font-size:16px;color:var(--navy)}
+.jtitle span{font-weight:500;color:var(--muted);font-size:13.5px;margin-left:6px}
+.legend{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
+.ctrl{display:flex;gap:6px;align-items:center}
+.btn{font:inherit;font-size:13px;font-weight:600;border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:6px 11px;border-radius:8px;cursor:pointer}
+.btn:hover{background:var(--soft)}
+.btn.play{background:var(--navy);color:#fff;border-color:var(--navy);min-width:92px}
+.btn:disabled{opacity:.4;cursor:default}
+.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.clock{font-family:var(--mono);font-size:12px;color:var(--muted);min-width:84px;text-align:right}
+
+/* actor chips */
+.who{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:99px;white-space:nowrap}
+.who::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.a-consultant{color:var(--c-consultant);background:var(--c-consultant-bg)}
+.a-model{color:var(--c-model);background:var(--c-model-bg)}
+.a-rule{color:var(--c-rule);background:var(--c-rule-bg)}
+.a-client{color:var(--c-client);background:var(--c-client-bg)}
+.a-expert{color:var(--c-expert);background:var(--c-expert-bg)}
+
+/* track */
+.track{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 10px 6px}
+.phases{display:grid;grid-template-columns:repeat(12,1fr);gap:0;margin-bottom:4px}
+.phase{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-align:center;border-bottom:2px solid var(--line);padding-bottom:3px;margin:0 6px}
+.phase.on{color:var(--navy);border-color:var(--accent)}
+.nodes{position:relative;display:grid;grid-template-columns:repeat(12,1fr)}
+.rail{position:absolute;left:calc(100%/24);right:calc(100%/24);top:15px;height:3px;background:var(--line);border-radius:3px}
+.rail i{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--accent);border-radius:3px;transition:width .4s linear}
+.node{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;border:0;background:none;font:inherit;cursor:pointer;padding:0 2px;color:var(--muted)}
+.node .dot{width:32px;height:32px;border-radius:50%;background:var(--panel);border:2px solid var(--line);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:12px;font-weight:600;position:relative;z-index:1;transition:all .3s}
+.node .lbl{font-size:11.5px;line-height:1.2;text-align:center;font-weight:500}
+.node .gate{font-size:9.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--c-consultant);height:12px}
+.node.done .dot{border-color:var(--accent);background:#fff5ec;color:var(--c-consultant)}
+.node.on .dot{background:var(--navy);border-color:var(--navy);color:#fff;transform:scale(1.15);box-shadow:0 0 0 5px rgba(233,119,26,.25)}
+.node.on .lbl{color:var(--ink);font-weight:700}
+.node.on .dot::after{content:"";position:absolute;inset:-7px;border-radius:50%;border:2px solid var(--accent);animation:ping 1.8s ease-out infinite}
+@keyframes ping{0%{opacity:.8;transform:scale(.9)}100%{opacity:0;transform:scale(1.35)}}
+.node:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:8px}
+
+/* stage */
+.stage{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.7fr) minmax(0,.95fr);gap:10px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;min-height:0;overflow:auto}
+.kick{font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+.stitle{font-size:19px;font-weight:700;line-height:1.2;margin:0 0 8px;color:var(--navy)}
+.whorow{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:9px}
+.what{font-size:14px;line-height:1.5;margin:0}
+.ex .kick{color:var(--c-consultant)}
+.row{display:flex;gap:8px;align-items:flex-start;font-size:12.8px;line-height:1.38;padding:5px 8px;border-radius:8px;background:var(--soft);margin-bottom:5px;opacity:0;transform:translateX(-14px);transition:opacity .45s ease,transform .45s ease}
+.row.show{opacity:1;transform:none}
+.row .tag{flex:none;font-family:var(--mono);font-size:11px;font-weight:600;color:var(--c-rule);background:var(--panel);border:1px solid var(--line);border-radius:5px;padding:1px 6px;margin-top:1px}
+.row b{font-weight:600}
+.row.hl{background:var(--warn-bg)}
+.row.ok{background:var(--pass-bg)}
+.row.bad{background:var(--fail-bg)}
+.pill{display:inline-block;font-size:11px;font-weight:700;padding:1px 7px;border-radius:99px;white-space:nowrap}
+.pill.pass{background:var(--pass-bg);color:var(--pass);border:1px solid var(--pass)}
+.pill.fail{background:var(--fail-bg);color:var(--fail);border:1px solid var(--fail)}
+.pill.warn{background:var(--warn-bg);color:var(--warn);border:1px solid var(--warn)}
+.pill.lock{background:var(--navy);color:#fff}
+.mono{font-family:var(--mono);font-size:12px}
+.arrow{color:var(--muted);font-weight:700;margin:0 3px}
+.sign{display:flex;flex-direction:column;gap:8px}
+.gatebox{border-radius:10px;padding:10px 12px;font-size:13.5px;line-height:1.45;opacity:0;transition:opacity .5s ease}
+.gatebox.show{opacity:1}
+.gatebox.yes{background:var(--c-consultant-bg);border:1.5px solid var(--c-consultant)}
+.gatebox.no{background:var(--soft);border:1px dashed var(--line);color:var(--muted)}
+.gatebox h4{margin:0 0 4px;font-size:12px;letter-spacing:.07em;text-transform:uppercase}
+.gatebox.yes h4{color:var(--c-consultant)}.gatebox.no h4{color:var(--muted)}
+.why{font-size:13px;color:var(--ink)}
+.why b{color:var(--navy)}
+.prog{height:4px;background:var(--soft);border-radius:4px;overflow:hidden;margin-top:auto}
+.prog i{display:block;height:100%;width:0;background:var(--accent)}
+.foot{font-size:11.5px;color:var(--muted);display:flex;gap:14px;flex-wrap:wrap}
+.foot b{color:var(--ink);font-weight:600}
+
+@media (max-width:980px){
+  html,body{height:auto}
+  #backend-panel{min-height:200px}
+  .stage{grid-template-columns:1fr}
+  .node .lbl{font-size:10px}
+  .node .gate{display:none}
+  .legend{margin-left:0}
+}
+@media (prefers-reduced-motion:reduce){
+  .row,.gatebox{transition:none}
+  .node.on .dot::after{animation:none}
+  .rail i{transition:none}
+}
+</style>
+</head>
+<body>
+
+<!-- TOP HALF: leave empty. The back-end animation goes in here. -->
+<section id="backend-panel" aria-label="Back-end view">Back-end view · built separately</section>
+
+<!-- BOTTOM HALF: user journey -->
+<section id="journey" aria-label="User journey">
+  <div class="jhead">
+    <div class="jtitle">The user journey <span>Atlas wants to launch a credit card in India (fictional client)</span></div>
+    <div class="legend" aria-label="Who does what">
+      <span class="who a-consultant">Consultant</span>
+      <span class="who a-model">Language model</span>
+      <span class="who a-rule">Rule engine</span>
+      <span class="who a-client">Client</span>
+      <span class="who a-expert">Experts</span>
+    </div>
+    <div class="ctrl">
+      <button class="btn" id="prev" type="button" aria-label="Previous step">◀</button>
+      <button class="btn play" id="play" type="button">▶ Play</button>
+      <button class="btn" id="next" type="button" aria-label="Next step">▶▶</button>
+      <span class="clock" id="clock">0:00 / 4:48</span>
+    </div>
+  </div>
+
+  <div class="track">
+    <div class="phases">
+      <div class="phase" data-ph="0" style="grid-column:1 / 4">Frame the question</div>
+      <div class="phase" data-ph="1" style="grid-column:4 / 8">Gather and check</div>
+      <div class="phase" data-ph="2" style="grid-column:8 / 13">Work out what it means</div>
+    </div>
+    <div class="nodes" id="nodes"><div class="rail"><i id="railfill"></i></div></div>
+  </div>
+
+  <div class="stage">
+    <div class="card" id="leftcard">
+      <div class="kick" id="kick">Step 1 of 12</div>
+      <h2 class="stitle" id="stitle"></h2>
+      <div class="whorow" id="whorow"></div>
+      <p class="what" id="what"></p>
+    </div>
+    <div class="card ex">
+      <div class="kick">In the Atlas example</div>
+      <div id="rows"></div>
+    </div>
+    <div class="card sign">
+      <div class="kick">Sign-off</div>
+      <div class="gatebox" id="gate"></div>
+      <div class="why" id="why"></div>
+      <div class="prog" aria-hidden="true"><i id="stepbar"></i></div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <span><b>Language model</b> reads and writes. It never decides.</span>
+    <span><b>Rule engine</b> is plain code: maths, rules and verdicts.</span>
+    <span><b>People</b> sign off at every step that matters. Every action is logged.</span>
+  </div>
+</section>
+
+<script>
+(function(){
+const STEP_SECONDS = 24;               // 12 steps x 24s = 4 min 48 s
+const W = (k,t)=>`<span class="who a-${k}">${t}</span>`;
+const R = (html,cls='',tag='')=>({html,cls,tag});
+
+const STEPS = [
+{ short:'Type the ask', ph:0, who:[['consultant','Consultant']],
+  title:'Type the ask',
+  what:"The consultant types what the client wants, in the client's own words, plus the country, industry and function. Nothing is tidied up at this stage.",
+  rows:[
+    R('<b>Client:</b> Atlas · <b>Country:</b> India · <b>Industry:</b> Consumer lending · <b>Function:</b> Growth strategy'),
+    R('"Atlas wants to launch a credit card in India. They believe the number of credit cards is growing about <b>30% a year</b>, so they can enter the market profitably."'),
+    R('The consultant clicks <b>Read the ask</b>. The activity record logs it.')
+  ],
+  gate:null, why:'Starting takes a couple of minutes, and the client\'s own assumption is captured as they said it.'},
+
+{ short:'Check the frame', ph:0, who:[['model','Language model'],['consultant','Consultant']],
+  title:'Check the frame',
+  what:'The agent pulls the ask apart into three things that usually get mixed up. The consultant corrects anything that looks wrong.',
+  rows:[
+    R('<b>What the client believes, to be tested:</b> card numbers grow about 30% a year','hl'),
+    R('<b>The decision they face:</b> launch within 18 months, and break even by year 3?'),
+    R('<b>One market measure:</b> credit cards in use, all of India. Cards, not cardholders, because RBI counts cards.'),
+    R('Every number collected later is converted to this measure before it is compared.')
+  ],
+  gate:{type:'yes',who:'Consultant confirms the frame'},
+  why:'<b>Why:</b> the client\'s assumption becomes a claim to test, not a fact to build on, and numbers from different sources can be compared fairly.'},
+
+{ short:'Agree the plan', ph:0, who:[['model','Language model'],['rule','Rule engine'],['consultant','Consultant']],
+  title:'Agree the plan and lock it',
+  what:'The agent drafts the ideas to test. Each has a pass line, the point where the decision changes, worked out from the client\'s goals or a named benchmark.',
+  rows:[
+    R('Market grows fast enough: <b>at least 20% a year</b> (benchmark: newcomers win 6–8% of new cards) <span class="pill lock">must-have</span>','','H1'),
+    R('The card pays for itself: <b>sign-up cost back within 24 months</b> <span class="pill lock">must-have</span>','','H2'),
+    R('Atlas has an edge: <b>existing customers at least 30% cheaper</b> to sign up (benchmark: banks do it 30–35% more cheaply)','','H3'),
+    R('Set up in time: <b>issuing bank and approvals within 12 months</b> (18 months minus 6 to build)','','H4'),
+    R('Removed by the consultant: "history of credit cards in India". It wouldn\'t change the decision.','bad'),
+    R('<b>Adding-up rule:</b> if a must-have fails, the plan fails. If one can\'t be settled, the consultant decides.')
+  ],
+  gate:{type:'yes',who:'Consultant ticks the box and locks the plan'},
+  why:'<b>Why:</b> pass lines, the adding-up rule and the evidence checklist are fixed before anyone sees evidence. Nobody can move the goalposts later.'},
+
+{ short:'Route evidence', ph:1, who:[['model','Language model'],['rule','Rule engine'],['consultant','Consultant']],
+  title:'Decide where each answer lives',
+  what:'Not everything is online. Each piece of evidence is sent to where it actually is: desk research, the client, or experts.',
+  rows:[
+    R('<b>Desk research:</b> RBI card counts, industry forecast, the firm\'s past studies, benchmarks'),
+    R('<b>Client data first:</b> Atlas has already sent 3 files. The agent checks every need against them and asks only for what is missing.','ok'),
+    R('<b>Client request (gaps only):</b> pilot sign-up cost per active card, how many pilot cards got used'),
+    R('<b>Expert questions:</b> typical payback for new issuers, how long bank onboarding takes'),
+    R('<b>What leaves the firm:</b> "Can Atlas reach the growth its card launch needs?" <span class="arrow">→</span> "India credit cards in use, annual growth forecast 2025–2030"','ok'),
+    R('<b>Source plan:</b> sources are grouped by credibility tier. The consultant can remove any before collection starts.'),
+    R('<b>Two rules:</b> market facts need two independent sources. Client-only facts are marked client-reported and never rated above medium.')
+  ],
+  gate:{type:'yes',who:'Consultant sends the client request and expert questions'},
+  why:'<b>Why:</b> the rule engine strips the client\'s name and private numbers first, and the consultant can see exactly what goes out.'},
+
+{ short:'Collect', ph:1, who:[['rule','Rule engine'],['model','Language model'],['client','Client'],['expert','Experts']],
+  title:'Collect the evidence',
+  what:'The pass-line benchmarks are already locked from step 3. Now every source is searched at once.',
+  rows:[
+    R('Pass-line benchmarks were fetched and locked in step 3, with their sources shown, before any Atlas evidence was read.','ok'),
+    R('Open web <b>9</b> · Firm archive <b>4</b> · Paid databases <b>7</b> · Client files <b>3</b> · Expert notes <b>2</b> = <b>25 items</b>'),
+    R('<b>Pending:</b> Atlas hasn\'t sent its sign-up cost yet. It stays on screen as pending instead of quietly disappearing.','hl')
+  ],
+  gate:null, why:'This is where most of the hours come back. One person no longer hunts through each source in turn.'},
+
+{ short:'Clean', ph:1, who:[['rule','Rule engine']],
+  title:'Clean the evidence',
+  what:'Numbers are pulled out and converted to the one measure. Copies are traced back to their original, and every calculation is done in code.',
+  rows:[
+    R('Mint, ET, a blog, a newswire and a portal all quote 13.8% <span class="arrow">→</span> counted as <b>one source</b>: the industry forecast','','E2'),
+    R('The firm\'s past studies (12–18%) checked: they don\'t reuse that forecast, so they count separately','','E4'),
+    R('<span class="mono">(10.80 crore ÷ 5.53 crore)^(1/5) − 1 ≈ 14.3% a year</span>, RBI card counts Dec 2019 to Dec 2024','','E3'),
+    R('<b>25 items become 16</b> unique pieces of evidence','ok')
+  ],
+  gate:null, why:'Five copies can\'t pass as five confirmations, and no number is a model\'s guess.'},
+
+{ short:'Review', ph:1, who:[['rule','Rule engine'],['consultant','Consultant']],
+  title:'Review the evidence',
+  what:'A checklist approves the clear-cut items. A person always checks the client\'s own claims, anything weak, and anything the answer leans on.',
+  rows:[
+    R('Checklist approves <b>7 items</b>, and <b>every source is shown</b> with its tier and date for the consultant to check. Spot check: approval timelines, 9–11 months. Consultant: <b>matches</b>.','ok','E11'),
+    R('Atlas\'s 30%: <b>kept as the claim being tested</b>, not as evidence for itself','hl','E1'),
+    R('Forecast 13.8% <span class="pill pass">approved</span> · Firm studies 12–18% <span class="pill pass">approved</span> · RBI 14.3% kept as a cross-check (it\'s history)','','E2–E4'),
+    R('Fintech blog, 35% <span class="pill fail">rejected</span>. A reason is required: "no method shown". It stays visible.','bad','E5'),
+    R('Atlas pilot data <span class="pill warn">client-reported</span> · newcomer-share benchmark <span class="pill pass">approved</span>','','E6–E10'),
+    R('"Run the tests" stays locked until all 9 are decided and the spot check is done.')
+  ],
+  gate:{type:'yes',who:'Consultant decides all 9 items, reviews the auto-approved sources and finishes the spot check'},
+  why:'<b>Why:</b> people judge what can change the answer. Every auto-approved source is shown to a person, and the spot check keeps the checklist honest.'},
+
+{ short:'Test', ph:2, who:[['rule','Rule engine']],
+  title:'Test each idea against its pass line',
+  what:'A fixed rule gives each idea a result and a confidence level. The language model doesn\'t vote.',
+  rows:[
+    R('Market: forecast 13.8% and firm studies 12–18% are both below 20%. RBI agrees. <span class="pill fail">Fails · high</span>','','H1'),
+    R('Payback: Atlas\'s sign-up cost is still missing. <span class="pill warn">Not enough evidence</span>','','H2'),
+    R('Edge: existing customers 34% cheaper; 42% of targets already bank with Atlas. <span class="pill pass">Holds · medium</span>','','H3'),
+    R('Timing: 9–12 months, right at the 12-month line. <span class="pill pass">Holds · low</span>','','H4'),
+    R('Atlas\'s 30% can\'t create a "conflict" on its own. It\'s the belief being tested. The independent sources all agree; they just disagree with the client.','hl')
+  ],
+  gate:null, why:'Same evidence in, same verdict out, every time.'},
+
+{ short:'Follow up', ph:2, who:[['model','Language model'],['consultant','Consultant'],['client','Client'],['rule','Rule engine']],
+  title:'Go back for the missing piece',
+  what:'Only ideas without enough evidence go back. The agent drafts a narrower question instead of writing them up on too little evidence.',
+  rows:[
+    R('"What did it cost Atlas to sign up each active card in the 2025 pilot, and who did the pilot sign up?" · <b>Trip 1 of 2</b>'),
+    R('Atlas uploads <span class="mono">pilot_costs.xlsx</span>. The consultant approves it as client-reported.','','E17'),
+    R('Pilot mix 42% existing / 58% new matches the national mix, so the cost isn\'t flattered'),
+    R('<span class="mono">₹2,400 ÷ ₹110 a month ≈ 22 months</span>. Experts say 20–30 months.'),
+    R('H2 now <span class="pill pass">Holds · medium</span>','ok','H2')
+  ],
+  gate:{type:'yes',who:'Consultant sends · a third trip needs a recorded reason'},
+  why:'<b>Why:</b> gaps get filled instead of guessed, and research time stays bounded.'},
+
+{ short:'Add it up', ph:2, who:[['rule','Rule engine'],['model','Language model']],
+  title:'Add it up',
+  what:'The rule locked in step 3 is applied. Then the language model writes a short summary where every sentence points to its source.',
+  rows:[
+    R('H1 is a must-have and it fails <span class="arrow">→</span> <b>Not achievable at the agreed pass line</b>, even though the other three hold','bad'),
+    R('"Forecast and firm studies put growth at 12–18% <span class="tag">E2</span> <span class="tag">E4</span>, RBI agrees at 14.3% <span class="tag">E3</span>. That\'s below the 20% Atlas needs <span class="tag">E7</span>. Payback is about 22 months <span class="tag">E17</span>."'),
+    R('<b>Rejected evidence, kept visible:</b> fintech blog, 35%, no method shown','','E5')
+  ],
+  gate:null, why:'Every line can be traced, and nothing inconvenient is hidden.'},
+
+{ short:'Stress-test', ph:2, who:[['consultant','Consultant']],
+  title:'Stress-test the answer',
+  what:'The screen shows what the answer rests on, and lets you move the inputs to see what would change it. The locked plan doesn\'t change.',
+  rows:[
+    R('<b>The answer rests on:</b> forecast 13.8%, firm studies 12–18%, newcomer benchmark 6–8%. All three were checked by the consultant.','','E2 E4 E7'),
+    R('<b>Slider:</b> growth Atlas needs to break even (20%). Lower it if Atlas could serve customers more cheaply.'),
+    R('<b>Slider:</b> months to build once approved (6). At 9, the H4 line moves to 9 months and H4 fails.'),
+    R('<b>Still unknown:</b> growth among first-time card users outside big cities · Atlas\'s cost to serve each card','hl')
+  ],
+  gate:null, why:'These are options for the consultant. The agent doesn\'t choose between them.'},
+
+{ short:'Decide', ph:2, who:[['consultant','Consultant']],
+  title:'The consultant decides',
+  what:'The consultant reads a one-page readiness brief and writes the conclusion themselves. It stays with the consultant. Nothing is sent on automatically.',
+  rows:[
+    R('H1 <span class="pill fail">Fails · high</span> · H2 <span class="pill pass">Holds · medium</span> · H3 <span class="pill pass">Holds · medium</span> · H4 <span class="pill pass">Holds · low</span>'),
+    R('<b>Overall:</b> not achievable at the agreed pass line · <b>Open gaps:</b> smaller customer groups, cost to serve'),
+    R('<b>Evidence:</b> 25 collected, 16 unique, 11 checked by a person'),
+    R('<b>Consultant writes:</b> "Don\'t launch nationally on the 30% assumption. Size first-time card users outside the big cities, then decide."','ok')
+  ],
+  gate:{type:'yes',who:'Consultant writes and saves the conclusion'},
+  why:'<b>Why:</b> the conclusion is the consultant\'s own. The agent never writes this part.'}
+];
+
+const $=id=>document.getElementById(id);
+const nodesEl=$('nodes');
+STEPS.forEach((s,i)=>{
+  const b=document.createElement('button'); b.type='button'; b.className='node'; b.dataset.i=i;
+  const g=s.gate?'<span class="gate">sign-off</span>':'<span class="gate"></span>';
+  b.innerHTML=`<span class="dot">${i+1}</span><span class="lbl">${s.short}</span>${g}`;
+  b.setAttribute('aria-label',`Step ${i+1}: ${s.short}`);
+  b.addEventListener('click',()=>go(i,true));
+  nodesEl.appendChild(b);
+});
+
+const reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+let cur=0, playing=false, t=0, last=0, raf=null, shownBeats=-1;
+
+function render(full){
+  const s=STEPS[cur];
+  $('kick').textContent=`Step ${cur+1} of 12`;
+  $('stitle').textContent=s.title;
+  $('whorow').innerHTML=s.who.map(([k,n])=>W(k,n)).join('');
+  $('what').textContent=s.what;
+  $('rows').innerHTML=s.rows.map(r=>`<div class="row ${r.cls}">${r.tag?`<span class="tag">${r.tag}</span>`:''}<div>${r.html}</div></div>`).join('');
+  const g=$('gate');
+  if(s.gate){ g.className='gatebox yes'; g.innerHTML=`<h4>Consultant sign-off</h4>${s.gate.who}`; }
+  else { g.className='gatebox no'; g.innerHTML='<h4>No sign-off here</h4>The agent moves on by itself.'; }
+  $('why').innerHTML=s.why;
+  document.querySelectorAll('.node').forEach(n=>{const i=+n.dataset.i;n.classList.toggle('on',i===cur);n.classList.toggle('done',i<cur);if(i===cur)n.setAttribute('aria-current','step');else n.removeAttribute('aria-current');});
+  document.querySelectorAll('.phase').forEach(p=>p.classList.toggle('on',+p.dataset.ph===s.ph));
+  $('prev').disabled=cur===0;
+  shownBeats=-1;
+  if(full||reduce){ reveal(999); }
+  update();
+}
+function reveal(n){
+  const rows=[...document.querySelectorAll('#rows .row')];
+  rows.forEach((r,i)=>r.classList.toggle('show',i<n));
+  const lastShown=rows[Math.min(n,rows.length)-1];
+  if(lastShown&&n<999){ try{ lastShown.scrollIntoView({block:'nearest',behavior:reduce?'auto':'smooth'}); }catch(e){} }
+  if(n>=999){ const c=document.querySelector('.card.ex'); if(c) c.scrollTop=0; }
+  $('gate').classList.toggle('show', n>rows.length);
+  shownBeats=n;
+}
+function beatsFor(tt){
+  const rows=STEPS[cur].rows.length, span=STEP_SECONDS*0.72, step=span/(rows+1);
+  return Math.min(rows+1, Math.floor(tt/step)+1);
+}
+function update(){
+  const total=STEPS.length*STEP_SECONDS, el=cur*STEP_SECONDS+t;
+  const fmt=s=>`${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}`;
+  $('clock').textContent=`${fmt(el)} / ${fmt(total)}`;
+  $('stepbar').style.width=(t/STEP_SECONDS*100)+'%';
+  $('railfill').style.width=((cur+t/STEP_SECONDS)/(STEPS.length-1)*100)+'%';
+}
+function tick(now){
+  if(!playing) return;
+  const dt=(now-last)/1000; last=now; t+=dt;
+  if(t>=STEP_SECONDS){
+    if(cur<STEPS.length-1){ cur++; t=0; render(false); }
+    else { t=STEP_SECONDS; setPlaying(false); update(); return; }
+  }
+  const b=beatsFor(t); if(b!==shownBeats) reveal(b);
+  update();
+  raf=requestAnimationFrame(tick);
+}
+function setPlaying(p){
+  playing=p; $('play').textContent=p?'❚❚ Pause':(cur===STEPS.length-1&&t>=STEP_SECONDS?'↺ Replay':'▶ Play');
+  if(p){ last=performance.now(); raf=requestAnimationFrame(tick); } else cancelAnimationFrame(raf);
+}
+function go(i,full){
+  cur=Math.max(0,Math.min(STEPS.length-1,i)); t=0;
+  render(!playing||full);
+  if(playing&&full){ t=STEP_SECONDS*0.72; } // jumping while playing: show everything, then carry on
+}
+$('play').addEventListener('click',()=>{
+  if(!playing&&cur===STEPS.length-1&&t>=STEP_SECONDS){ cur=0; t=0; render(false); }
+  else if(!playing&&t===0){ render(false); }
+  setPlaying(!playing);
+});
+$('prev').addEventListener('click',()=>go(cur-1,true));
+$('next').addEventListener('click',()=>{ if(cur<STEPS.length-1) go(cur+1,true); });
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight'){e.preventDefault(); if(cur<STEPS.length-1) go(cur+1,true);}
+  else if(e.key==='ArrowLeft'){e.preventDefault(); go(cur-1,true);}
+  else if(e.key===' '&&!(e.target&&e.target.tagName==='BUTTON')){e.preventDefault(); $('play').click();}
+});
+render(true);
+})();
+</script>
+</body>
+</html>

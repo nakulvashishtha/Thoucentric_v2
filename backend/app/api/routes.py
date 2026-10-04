@@ -7,7 +7,8 @@ from fastapi import APIRouter, File, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse, PlainTextResponse, Response
 from pydantic import BaseModel
 
-from .. import activity, jobs, samples
+from .. import activity, budget, jobs, samples, selfcheck
+from ..search import archive
 from ..errors import BadInput
 from ..settings import CONFIG_DIR, app_settings, effective_mode, keys_present, save_app_settings
 from ..workflow import bundle, frame, gather, replay, results
@@ -342,6 +343,48 @@ def get_job(cid: int, jid: int):
 
 # ------------------------------------------------------------------ samples and settings
 
+@router.post("/cases/{cid}/use-demo-data")
+def use_demo_data(cid: int):
+    frame.use_demo_data(cid)
+    return ok()
+
+
+@router.post("/cases/{cid}/fresh-answers")
+def fresh_answers(cid: int, body: dict):
+    frame.set_bypass_cache(cid, bool(body.get("on")))
+    return ok()
+
+
+@router.get("/selfcheck")
+async def run_selfcheck():
+    return await selfcheck.run(live_calls=True)
+
+
+@router.get("/archive")
+def archive_list():
+    return archive.listing()
+
+
+@router.post("/archive")
+async def archive_add(file: UploadFile = File(...), title: str = Form(""), published_date: str = Form("")):
+    from ..files import parse as fparse
+    name = file.filename or "document"
+    data = file.file.read()
+    try:
+        text = fparse.parse(name, data)
+    except fparse.UnsupportedFile as e:
+        raise BadInput(str(e))
+    except Exception:
+        raise BadInput(f"We couldn't read {name}. Try again, or upload a csv, xlsx, txt or pdf file instead.")
+    return {"id": archive.add(title.strip() or name, name, text, published_date.strip())}
+
+
+@router.delete("/archive/{doc_id}")
+def archive_remove(doc_id: int):
+    archive.remove(doc_id)
+    return ok()
+
+
 @router.get("/samples")
 def list_samples():
     return samples.listing()
@@ -376,6 +419,6 @@ def put_settings(body: dict):
 @router.get("/settings")
 def get_settings():
     mode, notice = effective_mode()
-    return {"mode": mode, "notice": notice, "keys": keys_present(), "app": app_settings(),
+    return {"mode": mode, "notice": notice, "keys": keys_present(), "app": app_settings(), "spend": budget.status(None),
             "rules_yaml": (CONFIG_DIR / "rules.yaml").read_text(encoding="utf-8"),
             "registry_yaml": (CONFIG_DIR / "source_registry.yaml").read_text(encoding="utf-8")}

@@ -1,0 +1,92 @@
+{
+  "title": "New hospital, Nakuru (sample)",
+  "description": "A hospital group tests whether a new 150-bed hospital in another city will fill and pay its way. Pinned sample in an unrelated domain, used for tests and demos.",
+  "details": {
+    "client_name": "Meridian Care Group",
+    "client_aliases": [
+      "Meridian",
+      "MCG"
+    ],
+    "private_numbers": [
+      "KES 4.2 billion build budget",
+      "11 sites under review"
+    ],
+    "country": "Kenya",
+    "industry": "Healthcare providers",
+    "function": "Expansion strategy",
+    "raw_ask": "Meridian Care Group wants to open a 150-bed private hospital in Nakuru. They think the city is short of private beds and the hospital will be 90% full within two years, so it will break even by year 4."
+  },
+  "client_files": [
+    {
+      "filename": "board_paper.txt",
+      "kind": "initial"
+    },
+    {
+      "filename": "site_kpis.csv",
+      "kind": "initial"
+    }
+  ],
+  "source_plan": [
+    {
+      "source_name": "National health statistics (sample)",
+      "domain": "health-stats.sample",
+      "origin_type": "open_web",
+      "included": true,
+      "stated_tier": 1,
+      "reason": "National statistics office, used in this sample"
+    },
+    {
+      "source_name": "Simulated healthcare market database",
+      "domain": "caredata.sample",
+      "origin_type": "paid_db",
+      "included": true
+    },
+    {
+      "source_name": "Firm research archive",
+      "domain": "",
+      "origin_type": "firm_archive",
+      "included": true
+    },
+    {
+      "source_name": "Business press (sample outlets)",
+      "domain": "press.sample",
+      "origin_type": "open_web",
+      "included": true,
+      "stated_tier": 3,
+      "reason": "Named business outlets with editors, used in this sample"
+    },
+    {
+      "source_name": "Open web search",
+      "domain": "",
+      "origin_type": "open_web",
+      "included": true
+    },
+    {
+      "source_name": "Health forums",
+      "domain": "forum.sample",
+      "origin_type": "open_web",
+      "included": false,
+      "removed_reason": "Patient forums are not reliable for market figures"
+    }
+  ],
+  "trips": {
+    "H2": {
+      "reply_file": "ramp_up.csv",
+      "sample_mix": {
+        "dimensions": [
+          "patients with insurance",
+          "patients paying themselves"
+        ],
+        "sample": {
+          "patients with insurance": 38,
+          "patients paying themselves": 62
+        },
+        "target": {
+          "patients with insurance": 40,
+          "patients paying themselves": 60
+        },
+        "target_note": "Patient mix across the client's current hospitals (site_kpis.csv)"
+      }
+    }
+  }
+}

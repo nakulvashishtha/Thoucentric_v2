@@ -7,6 +7,7 @@ from datetime import date
 from sqlmodel import Session, select
 
 from .. import samples
+from ..db.session import session as session_ctx
 from ..db.models import (Case, ClientFile, EvidenceItem, EvidenceLink, Frame, Hypothesis, RuleSet, now)
 from ..engine import convert, privacy, verdict as V, whatif
 from ..errors import JobFailure, NotFound
@@ -65,8 +66,10 @@ def search_for(case: Case):
         if not pack:
             raise JobFailure("A new case needs live search. Try a sample case instead, or switch to live mode in Settings.")
         return FixtureSearch(pack["seeds"])
-    from ..search.live import live_search  # built in the live layer
-    return live_search()
+    from ..search.live import live_search
+    with session_ctx() as s:
+        dl = deny_list(s, case)
+    return live_search(case.id, dl)
 
 
 async def pause(case: Case) -> None:

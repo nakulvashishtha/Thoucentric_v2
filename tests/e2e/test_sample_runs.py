@@ -126,3 +126,29 @@ def test_json_export_imports_as_a_new_case(client):
         [h["verdict"]["result"] for h in old["hypotheses"] if h["verdict"]]
     assert new["conclusion"]["text"] == old["conclusion"]["text"]
     assert client.post("/api/cases/import", files={"file": ("x.json", b"{}")}).status_code == 400
+
+
+S2 = "sample_02_hospital_expansion"
+
+
+def test_sample_2_unrelated_domain_runs_all_12_steps_with_no_code_change(client):
+    r = Runner(client, S2)
+    r.run_to_tests()
+    b = r.case()
+    k = b["counts"]
+    assert (k["collected"], k["unique"]) == (10, 9)
+    assert k["pending"] == 1 and k["rejected"] == 1 and k["auto_approved"] == 3
+    assert not any(e["seed_id"] == "web_forum" for e in b["evidence"])          # unticked source never searched
+    assert r.verdicts() == {"H1": ("holds", "high"), "H2": ("not_enough", "none"),
+                            "H3": ("holds", "low"), "H4": ("fails", "high")}
+    r.run_trips()
+    assert r.verdicts()["H2"] == ("holds", "medium")
+    r.finish()
+    b = r.case()
+    assert b["overall"]["result"] == "achievable" and b["summary"]["source"] == "llm"
+    w = r.call("POST", "/whatif", json={"assumptions": {"build_months": 20}})
+    h3 = next(x for x in w["ideas"] if x["code"] == "H3")
+    assert (h3["line"], h3["result"]) == (4, "fails")
+    assert all(s["state"] == "done" for s in b["progress"]["steps"])
+    trip = b["trips"][0]
+    assert trip["sample_mix_json"]["passes"] is True

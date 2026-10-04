@@ -52,6 +52,9 @@ export interface Bundle {
   duplicate_groups: { original: string; copies: string[]; original_title: string; rule: string }[];
   calcs: any[]; trips: Trip[]; overall: any; summary: any; conclusion: any;
   progress: { steps: StepState[]; current: number; done: Record<string, boolean>; reopened: string[] };
-  review: any; counts: any; sample_replies: Record<string, string>; jobs: Record<string, Job>; running_jobs: string[]; sliders: SliderDef[]; rules: any;
+  review: any; counts: any; spend: Spend; sample_replies: Record<string, string>; jobs: Record<string, Job>; running_jobs: string[]; sliders: SliderDef[]; rules: any;
 }
 export interface ActivityRow { id: number; ts: string; actor: Actor; event_type: string; step: number; message: string; payload_json?: any }
+
+export interface Spend { case_usd: number; today_usd: number; daily_cap_usd: number; calls: number; max_calls: number;
+  search_credits: number; max_search_credits: number; reached: string[]; warn: string[] }

@@ -67,7 +67,7 @@ def add_file(case_id: int, filename: str, data: bytes, kind: str = "initial", tr
     except fparse.UnsupportedFile as e:
         raise BadInput(str(e))
     except Exception:
-        raise BadInput(f"We couldn't read {filename}. Try again, or upload it as a csv, xlsx or txt file.")
+        raise BadInput(f"We couldn't read {filename}. Try again, or upload it as a csv, xlsx, txt or pdf file.")
     with session() as s:
         C.get_case(s, case_id)
         f = ClientFile(case_id=case_id, filename=filename, kind=kind, text_extract=text, trip_id=trip_id)
@@ -277,7 +277,11 @@ async def fetch_benchmark(case_id: int, h: Hypothesis, need_text: str) -> None:
     if case.mode == "fixtures":
         results = search.benchmarks(h.code)
     else:
-        results = await search.search(query, f"bench:{h.code}", "open_web", {"*"}, 2)
+        try:
+            results = await search.search(query, f"bench:{h.code}", "open_web", {"*"}, 2)
+        except JobFailure as e:
+            activity.log(case_id, "system", "benchmark_failed", 3, f"The benchmark search for {h.code} didn't work: {e}")
+            return
     for r in results[:2]:
         with session() as s:
             eid, seq = C.next_eid(s, case_id)
@@ -423,6 +427,29 @@ def load_sample(name: str) -> int:
         add_file(cid, f["filename"], samples.file_bytes(name, f["filename"]), f.get("kind", "initial"))
     activity.log(cid, "system", "sample_loaded", 1, "Loaded a sample case. Its data is simulated.")
     return cid
+
+
+def use_demo_data(case_id: int) -> None:
+    """After live calls fail, a sample case can switch to its stored answers. Said openly, never silently."""
+    with session() as s:
+        c = C.get_case(s, case_id)
+        if not c.sample:
+            raise BadInput("This case has no stored answers, so it can't switch to demo data. Press Try again, or "
+                           "open a sample case to show the steps.")
+        c.mode = "fixtures"
+        C.flag(s, c, live_failures=0)
+        s.add(c)
+        s.commit()
+    activity.log(case_id, "consultant", "use_demo_data", 0, "Switched this case to demo data (stored answers)")
+
+
+def set_bypass_cache(case_id: int, on: bool) -> None:
+    with session() as s:
+        c = C.get_case(s, case_id)
+        C.flag(s, c, bypass_cache=on)
+        s.commit()
+    activity.log(case_id, "consultant", "fresh_answers", 0,
+                 "Asked for fresh answers instead of saved ones" if on else "Went back to using saved answers")
 
 
 def describe_err(e: Exception) -> str:

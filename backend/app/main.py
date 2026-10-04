@@ -8,7 +8,7 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 
-from . import jobs
+from . import auth, jobs, selfcheck
 from .api.routes import router
 from .db.session import get_engine
 from .errors import BadInput, GateError, JobFailure, NotFound
@@ -28,6 +28,16 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(title="Research Workbench", docs_url=None, redoc_url=None, lifespan=lifespan)
 app.include_router(router)
+app.include_router(auth.router)
+
+
+@app.middleware("http")
+async def passcode_gate(request: Request, call_next):
+    """The passcode protects every /api route. /healthz and the page itself stay open (they hold no data)."""
+    path = request.url.path
+    if path.startswith("/api/") and path not in auth.OPEN_PATHS and not auth.signed_in(request):
+        return JSONResponse(status_code=401, content={"reason": "Enter the passcode to continue.", "required": []})
+    return await call_next(request)
 
 
 async def startup() -> None:
@@ -38,6 +48,7 @@ async def startup() -> None:
     present = [k for k, v in keys_present().items() if v]
     log.info("Research Workbench starting in %s mode%s; variables present: %s", mode,
              f" ({notice})" if notice else "", ", ".join(present) or "none")
+    asyncio.get_running_loop().create_task(selfcheck.log_at_startup())
 
 
 @app.exception_handler(GateError)

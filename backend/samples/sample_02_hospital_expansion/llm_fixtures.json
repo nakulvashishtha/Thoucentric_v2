@@ -1,0 +1,612 @@
+{
+  "FRAME": {
+    "client_belief": "Nakuru is short of private hospital beds, and the new hospital will be 90% full within two years.",
+    "decision": "Open a 150-bed hospital in Nakuru within 24 months, and break even by year 4?",
+    "case_measure_name": "Private inpatient days, Nakuru County",
+    "case_measure_definition": "Inpatient days in private hospitals in Nakuru County per year (days, not admissions)."
+  },
+  "PLAN_HYPOTHESES": {
+    "ideas": [
+      {
+        "code": "H1",
+        "text": "Demand grows fast enough: private inpatient demand in Nakuru grows at least 8% a year.",
+        "fact_type": "market",
+        "measure_name": "Growth in private inpatient days",
+        "measure_unit": "% a year",
+        "measure_definition": "Yearly growth in private inpatient days, Nakuru County.",
+        "comparator": ">=",
+        "pass_line_value": 8,
+        "source_type": "benchmark",
+        "source_note": "Past openings needed at least 8% a year demand growth to fill a 150-bed hospital within three years.",
+        "must_have": true,
+        "recency_category": "size_growth_price",
+        "benchmark_need": "Inpatient demand growth needed to fill a new hospital"
+      },
+      {
+        "code": "H2",
+        "text": "The hospital fills: bed occupancy reaches at least 75% in year 2.",
+        "fact_type": "client_operational",
+        "measure_name": "Bed occupancy in year 2",
+        "measure_unit": "%",
+        "measure_definition": "Share of available beds in use, averaged over the second year after opening.",
+        "comparator": ">=",
+        "pass_line_value": 75,
+        "source_type": "client_goal",
+        "source_note": "Breaking even by year 4 needs at least 75% of beds in use by year 2, from the board paper's plan.",
+        "must_have": true,
+        "recency_category": "structural_timing"
+      },
+      {
+        "code": "H3",
+        "text": "Staff in time: nurses can be hired within 6 months.",
+        "fact_type": "market",
+        "measure_name": "Time to hire a registered nurse",
+        "measure_unit": "months",
+        "measure_definition": "Months from advertising a post to the nurse starting work.",
+        "comparator": "<=",
+        "pass_line_formula": "open_months - build_months",
+        "assumptions": [
+          {
+            "name": "open_months",
+            "label": "Months until opening",
+            "value": 24,
+            "unit": "months",
+            "min": 12,
+            "max": 36
+          },
+          {
+            "name": "build_months",
+            "label": "Months needed to build",
+            "value": 18,
+            "unit": "months",
+            "min": 12,
+            "max": 24
+          }
+        ],
+        "source_type": "client_goal",
+        "source_note": "Open within 24 months; the building takes 18, so hiring must take 6 months or less.",
+        "must_have": false,
+        "recency_category": "structural_timing"
+      },
+      {
+        "code": "H4",
+        "text": "Patients can pay: at least 25% of county residents have health insurance.",
+        "fact_type": "market",
+        "measure_name": "Health insurance coverage",
+        "measure_unit": "%",
+        "measure_definition": "Share of county residents covered by any health insurance.",
+        "comparator": ">=",
+        "pass_line_value": 25,
+        "source_type": "estimate",
+        "source_note": "The break-even plan assumes about a quarter of patients are insured. This is a judgement, not a published figure.",
+        "must_have": false,
+        "recency_category": "size_growth_price"
+      }
+    ]
+  },
+  "GENERATE_QUERIES:bench:H1": {
+    "queries": [
+      "Inpatient demand growth needed to fill a new hospital"
+    ]
+  },
+  "ROUTE_NEEDS": {
+    "needs": [
+      {
+        "ref": "N1",
+        "idea": "H1",
+        "text": "Forecasts of private inpatient demand growth in Nakuru County.",
+        "route": "desk",
+        "coverage": "not_covered"
+      },
+      {
+        "ref": "N2",
+        "idea": "H2",
+        "text": "Bed occupancy in year 2 after the client's last hospital opening.",
+        "route": "client",
+        "coverage": "partly",
+        "file": "site_kpis.csv",
+        "locator": "B2",
+        "missing": "The file gives average occupancy across current hospitals, but not occupancy in year 2 after an opening."
+      },
+      {
+        "ref": "N3",
+        "idea": "H2",
+        "text": "The client's own view of how fast the hospital will fill.",
+        "route": "client",
+        "coverage": "answered_by_client_file",
+        "file": "board_paper.txt",
+        "locator": "line 2"
+      },
+      {
+        "ref": "N4",
+        "idea": "H3",
+        "text": "Time to hire nurses for a new hospital outside the capital.",
+        "route": "desk",
+        "coverage": "not_covered"
+      },
+      {
+        "ref": "N5",
+        "idea": "H3",
+        "text": "How long hiring nurses for a new hospital usually takes.",
+        "route": "expert",
+        "coverage": "not_covered"
+      },
+      {
+        "ref": "N6",
+        "idea": "H4",
+        "text": "Share of Nakuru County residents with health insurance.",
+        "route": "desk",
+        "coverage": "not_covered"
+      }
+    ]
+  },
+  "GENERATE_QUERIES:N1": {
+    "queries": [
+      "Nakuru County private inpatient demand growth forecast 2025 to 2030"
+    ]
+  },
+  "GENERATE_QUERIES:N4": {
+    "queries": [
+      "Kenya time to hire registered nurses new hospital 2025"
+    ]
+  },
+  "GENERATE_QUERIES:N6": {
+    "queries": [
+      "Nakuru County health insurance coverage 2025"
+    ]
+  },
+  "READ_SOURCE:bench_h1_fill": {
+    "figures": [
+      {
+        "unit": "% a year",
+        "quote_span": "grow at least 8% a year",
+        "locator": "para 1",
+        "period": "",
+        "value": 8
+      }
+    ],
+    "describe": {
+      "author_type": "consulting firm",
+      "method_cited": true,
+      "original_source_named": false,
+      "original_source_name": "",
+      "published_date": "2025-11",
+      "data_as_of": "2025"
+    }
+  },
+  "READ_SOURCE:db_demand": {
+    "figures": [
+      {
+        "unit": "% a year",
+        "quote_span": "will grow 9.5% a year from 2025 to 2030",
+        "locator": "para 1",
+        "period": "2025 to 2030",
+        "value": 9.5
+      }
+    ],
+    "describe": {
+      "author_type": "research firm",
+      "method_cited": true,
+      "original_source_named": true,
+      "original_source_name": "CareData Nakuru Hospital Outlook 2026",
+      "published_date": "2026-03-02",
+      "data_as_of": "Dec 2025"
+    }
+  },
+  "READ_SOURCE:arch_demand": {
+    "figures": [
+      {
+        "unit": "% a year",
+        "quote_span": "growing 9 to 11% a year",
+        "locator": "para 1",
+        "period": "2025",
+        "low": 9,
+        "high": 11
+      }
+    ],
+    "describe": {
+      "author_type": "consulting firm",
+      "method_cited": true,
+      "original_source_named": false,
+      "original_source_name": "",
+      "published_date": "2025-10",
+      "data_as_of": "Sep 2025"
+    }
+  },
+  "READ_SOURCE:web_demand_copy": {
+    "figures": [
+      {
+        "unit": "% a year",
+        "quote_span": "will grow 9.5% a year",
+        "locator": "para 1",
+        "period": "",
+        "value": 9.5
+      }
+    ],
+    "describe": {
+      "author_type": "news outlet",
+      "method_cited": false,
+      "original_source_named": true,
+      "original_source_name": "CareData Nakuru Hospital Outlook 2026",
+      "published_date": "2026-03-20",
+      "data_as_of": ""
+    }
+  },
+  "READ_SOURCE:web_blog_beds": {
+    "figures": [
+      {
+        "unit": "% a year",
+        "quote_span": "exploding at 20% a year",
+        "locator": "para 1",
+        "period": "",
+        "value": 20
+      }
+    ],
+    "describe": {
+      "author_type": "blog",
+      "method_cited": false,
+      "original_source_named": false,
+      "original_source_name": "",
+      "published_date": "2026-05",
+      "data_as_of": ""
+    }
+  },
+  "READ_SOURCE:web_forum": {
+    "figures": [
+      {
+        "unit": "% a year",
+        "quote_span": "up 50% a year",
+        "locator": "para 1",
+        "period": "",
+        "value": 50
+      }
+    ],
+    "describe": {
+      "author_type": "forum",
+      "method_cited": false,
+      "original_source_named": false,
+      "original_source_name": "",
+      "published_date": "2026-04",
+      "data_as_of": ""
+    }
+  },
+  "READ_SOURCE:stats_insurance": {
+    "figures": [
+      {
+        "unit": "%",
+        "quote_span": "covered 21% of residents",
+        "locator": "para 1",
+        "period": "2025",
+        "value": 21
+      }
+    ],
+    "describe": {
+      "author_type": "statistics office",
+      "method_cited": true,
+      "original_source_named": false,
+      "original_source_name": "",
+      "published_date": "2026-01",
+      "data_as_of": "2025"
+    }
+  },
+  "READ_SOURCE:db_insurance": {
+    "figures": [
+      {
+        "unit": "%",
+        "quote_span": "shows 22% of Nakuru County residents",
+        "locator": "para 1",
+        "period": "2025",
+        "value": 22
+      }
+    ],
+    "describe": {
+      "author_type": "research firm",
+      "method_cited": true,
+      "original_source_named": false,
+      "original_source_name": "",
+      "published_date": "2026-02",
+      "data_as_of": "Dec 2025"
+    }
+  },
+  "READ_SOURCE:arch_hiring": {
+    "figures": [
+      {
+        "unit": "months",
+        "quote_span": "took 5 months on average",
+        "locator": "para 1",
+        "period": "2025",
+        "value": 5
+      }
+    ],
+    "describe": {
+      "author_type": "consulting firm",
+      "method_cited": true,
+      "original_source_named": false,
+      "original_source_name": "",
+      "published_date": "2025-12",
+      "data_as_of": "2025"
+    }
+  },
+  "READ_SOURCE:exp_hiring": {
+    "figures": [
+      {
+        "unit": "months",
+        "quote_span": "usually takes 4 to 7 months",
+        "locator": "para 1",
+        "period": "",
+        "low": 4,
+        "high": 7
+      }
+    ],
+    "describe": {
+      "author_type": "expert",
+      "method_cited": false,
+      "original_source_named": false,
+      "original_source_name": "",
+      "published_date": "2026-09",
+      "data_as_of": ""
+    }
+  },
+  "READ_SOURCE:file:board_paper.txt": {
+    "figures": [
+      {
+        "unit": "%",
+        "quote_span": "will be 90% full within two years",
+        "locator": "line 2",
+        "period": "",
+        "value": 90
+      }
+    ],
+    "describe": {
+      "author_type": "client",
+      "method_cited": false,
+      "original_source_named": false,
+      "original_source_name": "",
+      "published_date": "2026-05",
+      "data_as_of": ""
+    }
+  },
+  "READ_SOURCE:file:site_kpis.csv": {
+    "figures": [
+      {
+        "unit": "%",
+        "quote_span": "82%",
+        "locator": "B2",
+        "period": "2025",
+        "value": 82
+      },
+      {
+        "unit": "days",
+        "quote_span": "4.1",
+        "locator": "B3",
+        "period": "2025",
+        "value": 4.1
+      },
+      {
+        "unit": "%",
+        "quote_span": "40%",
+        "locator": "B4",
+        "period": "2025",
+        "value": 40
+      }
+    ],
+    "describe": {
+      "author_type": "client",
+      "method_cited": true,
+      "original_source_named": false,
+      "original_source_name": "",
+      "published_date": "2025",
+      "data_as_of": "2025"
+    }
+  },
+  "READ_SOURCE:file:ramp_up.csv": {
+    "figures": [
+      {
+        "unit": "%",
+        "quote_span": "80",
+        "locator": "B2",
+        "period": "2023",
+        "value": 80
+      },
+      {
+        "unit": "%",
+        "quote_span": "38",
+        "locator": "B3",
+        "period": "2023",
+        "value": 38
+      },
+      {
+        "unit": "%",
+        "quote_span": "62",
+        "locator": "B4",
+        "period": "2023",
+        "value": 62
+      }
+    ],
+    "describe": {
+      "author_type": "client",
+      "method_cited": true,
+      "original_source_named": false,
+      "original_source_name": "",
+      "published_date": "2026",
+      "data_as_of": "2023"
+    }
+  },
+  "LINK_EVIDENCE:bench_h1_fill": {
+    "links": [
+      {
+        "idea": "H1",
+        "role": "supports_test",
+        "figure_index": 0
+      }
+    ],
+    "derivations": []
+  },
+  "LINK_EVIDENCE:db_demand": {
+    "links": [
+      {
+        "idea": "H1",
+        "role": "supports_test",
+        "figure_index": 0
+      }
+    ],
+    "derivations": []
+  },
+  "LINK_EVIDENCE:arch_demand": {
+    "links": [
+      {
+        "idea": "H1",
+        "role": "supports_test",
+        "figure_index": 0
+      }
+    ],
+    "derivations": []
+  },
+  "LINK_EVIDENCE:web_demand_copy": {
+    "links": [
+      {
+        "idea": "H1",
+        "role": "supports_test",
+        "figure_index": 0
+      }
+    ],
+    "derivations": []
+  },
+  "LINK_EVIDENCE:web_blog_beds": {
+    "links": [
+      {
+        "idea": "H1",
+        "role": "supports_test",
+        "figure_index": 0
+      }
+    ],
+    "derivations": []
+  },
+  "LINK_EVIDENCE:web_forum": {
+    "links": [
+      {
+        "idea": "H1",
+        "role": "supports_test",
+        "figure_index": 0
+      }
+    ],
+    "derivations": []
+  },
+  "LINK_EVIDENCE:stats_insurance": {
+    "links": [
+      {
+        "idea": "H4",
+        "role": "supports_test",
+        "figure_index": 0
+      }
+    ],
+    "derivations": []
+  },
+  "LINK_EVIDENCE:db_insurance": {
+    "links": [
+      {
+        "idea": "H4",
+        "role": "supports_test",
+        "figure_index": 0
+      }
+    ],
+    "derivations": []
+  },
+  "LINK_EVIDENCE:arch_hiring": {
+    "links": [
+      {
+        "idea": "H3",
+        "role": "supports_test",
+        "figure_index": 0
+      }
+    ],
+    "derivations": []
+  },
+  "LINK_EVIDENCE:exp_hiring": {
+    "links": [
+      {
+        "idea": "H3",
+        "role": "supports_test",
+        "figure_index": 0
+      }
+    ],
+    "derivations": []
+  },
+  "LINK_EVIDENCE:file:board_paper.txt": {
+    "links": [
+      {
+        "idea": "H2",
+        "role": "supports_test",
+        "figure_index": 0
+      }
+    ],
+    "derivations": []
+  },
+  "LINK_EVIDENCE:file:site_kpis.csv": {
+    "links": [
+      {
+        "idea": "H2",
+        "role": "context",
+        "figure_index": 0
+      }
+    ],
+    "derivations": []
+  },
+  "LINK_EVIDENCE:file:ramp_up.csv": {
+    "links": [
+      {
+        "idea": "H2",
+        "role": "supports_test",
+        "figure_index": 0
+      }
+    ],
+    "derivations": []
+  },
+  "DRAFT_FOLLOWUP:H2": {
+    "question": "What was bed occupancy in the second year after your last hospital opening, and what share of those patients had insurance?",
+    "what_we_have": "We already have the board paper and the summary of your current hospitals. We don't yet have occupancy in the second year after an opening."
+  },
+  "SUMMARISE": {
+    "sentences": [
+      {
+        "text": "Two separate studies put growth in private inpatient demand at 9.5% a year and 9 to 11% a year, above the 8% a year target.",
+        "evidence_ids": [
+          "{{seed:db_demand}}",
+          "{{seed:arch_demand}}"
+        ]
+      },
+      {
+        "text": "The client's last opening reached 80% bed occupancy in its second year, above the 75% target.",
+        "evidence_ids": [
+          "{{file:ramp_up.csv}}"
+        ]
+      },
+      {
+        "text": "Hiring nurses took 5 months in past openings and 4 to 7 months according to an expert, close to the 6-month target.",
+        "evidence_ids": [
+          "{{seed:arch_hiring}}",
+          "{{seed:exp_hiring}}"
+        ]
+      },
+      {
+        "text": "Only 21% and 22% of county residents have health insurance, below the 25% target.",
+        "evidence_ids": [
+          "{{seed:stats_insurance}}",
+          "{{seed:db_insurance}}"
+        ]
+      }
+    ]
+  },
+  "UNKNOWNS": {
+    "unknowns": [
+      {
+        "idea": "H3",
+        "text": "How quickly specialist nurses, not only general nurses, can be hired."
+      },
+      {
+        "idea": "H4",
+        "text": "How many patients without insurance can pay for private care."
+      }
+    ]
+  }
+}

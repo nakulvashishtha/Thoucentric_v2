@@ -5,7 +5,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 APP_DIRS = [ROOT / "frontend" / "src", ROOT / "backend" / "app", ROOT / "backend" / "prompts", ROOT / "backend" / "config"]
 EXCLUDE = ("samples", "fixtures", "design", "node_modules", "__pycache__")
-EXAMPLE_NAMES = ["Atlas", "Example Client"]
+EXAMPLE_NAMES = ["Atlas", "Example Client", "Meridian", "Nakuru"]
 
 
 def _files():

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from sqlmodel import select
 
-from .. import jobs
+from .. import budget, jobs
 from ..db.models import (Calc, ClientFile, Conclusion, EvidenceItem, EvidenceNeed, Frame, Job, Overall, RuleSet,
                          SourcePlanItem, Summary, Trip, Verdict)
 from ..db.session import session
@@ -127,6 +127,7 @@ def build(case_id: int) -> dict:
         "sliders": slider_rows,
         "sample_replies": _sample_replies(case),
         "rules": {"thresholds": rules(), "adding_up_rule": rules()["adding_up_rule"]},
+        "spend": budget.status(case_id),
     }
 
 

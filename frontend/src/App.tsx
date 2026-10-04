@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError, upload } from "./api/client";
-import type { ActivityRow, Bundle } from "./api/types";
+import type { ActivityRow, Bundle, Spend } from "./api/types";
 import * as T from "./copy";
 import { Ctx, CaseCtx, useCase } from "./state";
 import { Details, Dialog, Drawer, Empty, ErrorBoundary, Icon, Origin, Skeleton, Toggle, fmtDate } from "./components/ui";
@@ -30,7 +30,7 @@ function useNarrow(): boolean {
 }
 
 interface AppSettings { mode: string; notice: string; keys: Record<string, boolean>; app: { mode: string; fast_demo: boolean; larger_text: boolean };
-  rules_yaml: string; registry_yaml: string }
+  rules_yaml: string; registry_yaml: string; spend: Spend }
 
 function useSettings() {
   const [s, setS] = useState<AppSettings | null>(null);
@@ -51,6 +51,41 @@ function useSettings() {
 }
 
 export default function App() {
+  const [auth, setAuth] = useState<"checking" | "needed" | "ok">("checking");
+  useEffect(() => {
+    api<{ required: boolean; signed_in: boolean }>("GET", "/session")
+      .then((r) => setAuth(r.required && !r.signed_in ? "needed" : "ok")).catch(() => setAuth("ok"));
+    const f = () => setAuth("needed");
+    window.addEventListener("rw-auth", f);
+    return () => window.removeEventListener("rw-auth", f);
+  }, []);
+  if (auth === "checking") return null;
+  if (auth === "needed") return <PasscodeScreen onDone={() => { setAuth("ok"); window.location.reload(); }} />;
+  return <Workbench />;
+}
+
+function PasscodeScreen({ onDone }: { onDone: () => void }) {
+  const [code, setCode] = useState("");
+  const [err, setErr] = useState("");
+  return (
+    <main>
+      <form className="card" style={{ maxWidth: 440, margin: "80px auto" }} onSubmit={async (e) => {
+        e.preventDefault();
+        try { await api("POST", "/login", { passcode: code }); onDone(); }
+        catch (x) { setErr(x instanceof ApiError ? x.message : T.errors.generic); }
+      }}>
+        <h1 className="page-title" style={{ fontSize: "1.5rem" }}>{T.passcode.title}</h1>
+        <p className="muted">{T.passcode.hint}</p>
+        <label className="field"><span className="field-label">{T.passcode.label}</span>
+          <input type="password" autoFocus value={code} onChange={(e) => setCode(e.target.value)} /></label>
+        {err ? <p className="small" style={{ color: "var(--fail)" }}>{err}</p> : null}
+        <div style={{ marginTop: 16 }}><button type="submit" className="btn primary" disabled={!code}>{T.buttons.signIn}</button></div>
+      </form>
+    </main>
+  );
+}
+
+function Workbench() {
   const [hash, nav] = useRoute();
   const settings = useSettings();
   const m = hash.match(/^#\/case\/(\d+)(?:\/step\/(\d+))?/);
@@ -244,6 +279,9 @@ function CaseInner({ cid, step, nav, settings }: { cid: number; step: number | n
     if (b && step == null) window.location.replace(`#/case/${cid}/step/${b.progress.current}`);
   }, [b, step, cid]);
 
+  // moving between steps always shows the latest state of the case
+  useEffect(() => { if (step != null) void refresh(); }, [step, refresh]);
+
   // gathering has no sign-off: when it finishes while you watch it, the view moves on with a brief notice
   const watching = useRef(false);
   useEffect(() => {
@@ -289,6 +327,18 @@ function CaseInner({ cid, step, nav, settings }: { cid: number; step: number | n
             })}>{T.buttons.tryAgain}</button> : null}
           </div></div>
         ))}
+        {(b.spend?.reached || []).length ? <div className="banner error" role="alert"><div className="banner-inner"><Icon name="warn" />
+          <span className="grow">{T.banners.limitReached(T.banners.limitNames[b.spend.reached[0]])}</span>
+          <button type="button" className="btn small" onClick={() => setPanel("settings")}>{T.app.settings}</button></div></div>
+          : (b.spend?.warn || []).length ? <div className="banner demo" role="status"><div className="banner-inner"><Icon name="warn" />
+          <span className="grow">{T.banners.limitNear(T.banners.limitNames[b.spend.warn[0]])}</span></div></div> : null}
+        {b.mode.case === "live" && (b.case.settings_json?.live_failures || 0) >= 2 ? (
+          <div className="banner error" role="alert"><div className="banner-inner"><Icon name="warn" />
+            <span className="grow">{b.case.sample ? T.banners.liveFailed : T.banners.liveFailedBlank}</span>
+            {b.case.sample ? <button type="button" className="btn small" onClick={() => act(() => api("POST", `/cases/${cid}/use-demo-data`))}>
+              {T.buttons.useDemoData}</button> : null}
+          </div></div>
+        ) : null}
         {actErr ? <div className="banner error" role="alert"><div className="banner-inner"><Icon name="warn" />
           <span className="grow">{actErr}</span>
           <button type="button" className="iconbtn" aria-label={T.app.close} onClick={() => setActErr("")}><Icon name="close" /></button>
@@ -441,6 +491,17 @@ function SettingsDrawer({ settings, b, act, onClose, onDeleted, onReset }: {
             </div>
           </div>
         ) : null}
+        <SpendBox spend={b?.spend || s?.spend} />
+        {b && act && b.mode.case === "live" ? (
+          <div>
+            <span className="field-label">{T.settings.freshAnswers}</span>
+            <span className="hint">{T.settings.freshAnswersHint}</span>
+            <Toggle label={T.settings.freshAnswers} value={!!b.case.settings_json?.bypass_cache}
+              onChange={(v) => act(() => api("POST", `/cases/${cid}/fresh-answers`, { on: v }))} />
+          </div>
+        ) : null}
+        <Checks />
+        <ArchiveBox />
         <Details title={T.settings.rulesTitle}>
           <pre className="yaml">{s?.rules_yaml}</pre>
           <pre className="yaml">{s?.registry_yaml}</pre>
@@ -459,3 +520,85 @@ function SettingsDrawer({ settings, b, act, onClose, onDeleted, onReset }: {
   );
 }
 
+
+function SpendBox({ spend }: { spend?: Spend }) {
+  if (!spend) return null;
+  return (
+    <div>
+      <p className="label" style={{ marginTop: 8 }}>{T.settings.spendTitle}</p>
+      <div className="small stack-sm">
+        <div className="mono">{T.settings.spendToday(spend.today_usd.toFixed(2), String(spend.daily_cap_usd))}</div>
+        <div className="mono">{T.settings.spendCase(spend.case_usd.toFixed(2), spend.calls, spend.max_calls)}</div>
+        <div className="mono">{T.settings.spendSearch(spend.search_credits, spend.max_search_credits)}</div>
+      </div>
+    </div>
+  );
+}
+
+interface CheckItem { key: string; label: string; ok: boolean | null; detail: string; fix: string }
+
+function Checks() {
+  const [res, setRes] = useState<{ items: CheckItem[]; all_green: boolean; red: number } | null>(null);
+  const [running, setRunning] = useState(false);
+  return (
+    <div>
+      <p className="label" style={{ marginTop: 8 }}>{T.settings.checksTitle}</p>
+      <span className="hint">{T.settings.checksHint}</span>
+      <button type="button" className="btn small" disabled={running} onClick={async () => {
+        setRunning(true);
+        try { setRes(await api("GET", "/selfcheck")); } finally { setRunning(false); }
+      }}>{T.buttons.runChecks}</button>
+      {running ? <p className="small muted">{T.settings.checksRunning}</p> : null}
+      {res ? (
+        <div className="stack-sm" style={{ marginTop: 12 }}>
+          <p className="small" style={{ margin: 0, color: res.all_green ? "var(--pass)" : "var(--fail)" }}>
+            {res.all_green ? T.settings.checksAllGreen : T.settings.checksRed(res.red)}</p>
+          {res.items.map((i) => (
+            <div key={i.key} className="row small" style={{ alignItems: "flex-start" }}>
+              <span style={{ color: i.ok ? "var(--pass)" : i.ok === false ? "var(--fail)" : "var(--muted)", display: "inline-flex", paddingTop: 2 }}>
+                <Icon name={i.ok ? "tick" : i.ok === false ? "cross" : "info"} title={i.label} /></span>
+              <div><b>{i.label}</b>{": "}{i.detail}{i.fix ? <div><b>{T.settings.fix}:</b> {i.fix}</div> : null}</div>
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+interface ArchiveRow { id: number; title: string; filename: string; published_date: string }
+
+function ArchiveBox() {
+  const [rows, setRows] = useState<ArchiveRow[]>([]);
+  const [title, setTitle] = useState("");
+  const [date, setDate] = useState("");
+  const [err, setErr] = useState("");
+  const fileRef = useRef<HTMLInputElement>(null);
+  const load = useCallback(() => { api<ArchiveRow[]>("GET", "/archive").then(setRows).catch(() => setRows([])); }, []);
+  useEffect(() => { load(); }, [load]);
+  return (
+    <div>
+      <p className="label" style={{ marginTop: 8 }}>{T.settings.archiveTitle}</p>
+      <span className="hint">{T.settings.archiveHint}</span>
+      {rows.length === 0 ? <p className="small muted">{T.settings.archiveEmpty}</p> : (
+        <ul className="filelist">{rows.map((r) => (
+          <li key={r.id}><Icon name="file" /><span className="grow">{r.title}{r.published_date ? ` · ${r.published_date}` : ""}</span>
+            <button type="button" className="linkbtn small" onClick={async () => { await api("DELETE", `/archive/${r.id}`); load(); }}>{T.buttons.remove}</button></li>))}
+        </ul>
+      )}
+      <div className="grid2" style={{ marginTop: 8 }}>
+        <input type="text" aria-label={T.settings.archiveDocTitle} placeholder={T.settings.archiveDocTitle} value={title} onChange={(e) => setTitle(e.target.value)} />
+        <input type="text" aria-label={T.settings.archiveDate} placeholder={T.settings.archiveDate} value={date} onChange={(e) => setDate(e.target.value)} />
+      </div>
+      <button type="button" className="btn small" style={{ marginTop: 8 }} onClick={() => fileRef.current?.click()}>{T.buttons.addDocument}</button>
+      <input ref={fileRef} type="file" hidden accept=".csv,.xlsx,.txt,.pdf" aria-label={T.buttons.addDocument} onChange={async (e) => {
+        const f = e.target.files?.[0]; e.target.value = "";
+        if (!f) return;
+        const fd = new FormData(); fd.append("file", f); fd.append("title", title); fd.append("published_date", date);
+        try { setErr(""); await upload("/archive", fd); setTitle(""); setDate(""); load(); }
+        catch (x) { setErr(x instanceof ApiError ? x.message : T.errors.upload); }
+      }} />
+      {err ? <p className="small" style={{ color: "var(--fail)" }}>{err}</p> : null}
+    </div>
+  );
+}

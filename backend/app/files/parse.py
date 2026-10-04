@@ -7,7 +7,8 @@ import io
 from openpyxl import load_workbook
 from openpyxl.utils import get_column_letter
 
-ALLOWED = {".csv", ".xlsx", ".txt", ".md"}
+ALLOWED = {".csv", ".xlsx", ".txt", ".md", ".pdf"}
+MAX_PDF_PAGES = 200
 MAX_CHARS = 200_000
 
 
@@ -30,11 +31,13 @@ def _cell(v) -> str:
 def parse(filename: str, data: bytes) -> str:
     e = ext(filename)
     if e not in ALLOWED:
-        raise UnsupportedFile(f"{filename}: only csv, xlsx and txt files are accepted here")
+        raise UnsupportedFile(f"{filename} isn't a file type we can read. Upload a csv, xlsx, txt or pdf file instead.")
     if e in (".txt", ".md"):
         text = data.decode("utf-8", errors="replace")
         lines = text.splitlines()
         return "\n".join(f"[line {i}] {ln}" for i, ln in enumerate(lines, start=1) if ln.strip())[:MAX_CHARS]
+    if e == ".pdf":
+        return _pdf(data)
     if e == ".csv":
         rows = list(csv.reader(io.StringIO(data.decode("utf-8-sig", errors="replace"))))
         out = []
@@ -56,3 +59,20 @@ def parse(filename: str, data: bytes) -> str:
                 break
     wb.close()
     return "\n".join(out)[:MAX_CHARS]
+
+
+def _pdf(data: bytes) -> str:
+    """Text per page with [page N] markers, so a quote can be checked against its page."""
+    import pdfplumber
+    out = []
+    with pdfplumber.open(io.BytesIO(data)) as pdf:
+        for i, page in enumerate(pdf.pages[:MAX_PDF_PAGES], start=1):
+            text = (page.extract_text() or "").strip()
+            if text:
+                out.append(f"[page {i}]\n{text}")
+            page.flush_cache()
+            if sum(len(x) for x in out) > MAX_CHARS:
+                break
+    if not out:
+        raise UnsupportedFile("We couldn't find any text in this PDF. It may be a scan. Upload a text version instead.")
+    return "\n\n".join(out)[:MAX_CHARS]

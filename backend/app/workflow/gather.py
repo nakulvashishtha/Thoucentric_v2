@@ -11,7 +11,7 @@ from ..db.models import (Calc, Case, ClientFile, EvidenceItem, EvidenceLink, Evi
                          now)
 from ..db.session import session
 from ..engine import checklist as CL, convert, credibility, dedup, privacy, spotcheck, verify
-from ..errors import BadInput, GateError
+from ..errors import BadInput, GateError, JobFailure
 from ..llm import interface as llm
 from ..settings import country_code, registry, rules
 from ..state_machine import require
@@ -269,6 +269,7 @@ def start_collect(case_id: int):
         activity.log(case_id, "rule_engine", "collect_started", 5,
                      "Started collecting evidence from the chosen sources")
         stopped = False
+        failures: list[str] = []
         desk = [n for n in needs if n.route == "desk"]
         sem = asyncio.Semaphore(rules()["fast_demo"]["search_concurrency"])
 
@@ -280,7 +281,12 @@ def start_collect(case_id: int):
                 activity.log(case_id, "rule_engine", "query_blocked", 5, "Blocked a search that contained a private term")
                 return []
             async with sem:
-                return await search.search(q["query"], n.ref, origin, included, limit)
+                try:
+                    return await search.search(q["query"], n.ref, origin, included, limit)
+                except JobFailure as e:                     # keep going with the other sources
+                    failures.append(str(e))
+                    activity.log(case_id, "system", "search_failed", 5, str(e))
+                    return []
 
         for origin in ("open_web", "firm_archive", "paid_db"):
             if not any(p.included and p.origin_type == origin for p in plan):

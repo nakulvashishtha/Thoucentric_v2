@@ -252,6 +252,16 @@ class Job(SQLModel, table=True):
     progress_json: dict = J(dict)
 
 
+class ArchiveDoc(SQLModel, table=True):
+    """A document in the firm's research archive, uploaded by a consultant and searched by keyword (FTS5)."""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    title: str = ""
+    filename: str = ""
+    published_date: str = ""
+    text: str = Field(default="", sa_column=Column(Text))
+    uploaded_at: str = Field(default_factory=now)
+
+
 class LlmCache(SQLModel, table=True):
     key: str = Field(primary_key=True)
     job: str = ""

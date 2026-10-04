@@ -26,6 +26,13 @@ def get_engine():
                 cur.execute("PRAGMA foreign_keys=ON")
                 cur.close()
         SQLModel.metadata.create_all(_engine)
+        if url.startswith("sqlite"):
+            with _engine.begin() as conn:      # keyword index for the firm archive
+                try:
+                    conn.exec_driver_sql("CREATE VIRTUAL TABLE IF NOT EXISTS archive_fts "
+                                         "USING fts5(title, body, doc_id UNINDEXED)")
+                except Exception:  # noqa: BLE001  (an SQLite build without FTS5 falls back to a plain scan)
+                    pass
     return _engine
 
 

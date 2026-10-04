@@ -27,6 +27,17 @@ export const banners = {
   demo: "Demo data mode: stored responses, not live.",
   noKeys: "Live keys not found, so the app opened in demo data mode.",
   jobFailed: "This step didn't finish.",
+  liveFailed: "The live AI or search service failed twice in a row. You can switch this case to its stored sample answers.",
+  liveFailedBlank: "The live AI or search service failed twice in a row. Press Try again in a minute, or open a sample case to show the steps.",
+  limitReached: (what: string) => `The ${what} is reached, so no more AI or search calls will be made. Open Settings to see the spend.`,
+  limitNear: (what: string) => `This case is close to the ${what}. Open Settings to see the spend.`,
+  limitNames: { calls: "AI call limit for this case", daily: "daily spending limit", search: "search limit for this case" } as Record<string, string>,
+};
+
+export const passcode = {
+  title: "Enter the passcode",
+  hint: "This workbench is private. Ask the person who set it up for the passcode.",
+  label: "Passcode",
 };
 
 // Screen titles, the instruction under each title, and the primary button (section 12.4).
@@ -162,6 +173,11 @@ export const buttons = {
   exportCsv: "Export CSV",
   skipToStep: "Skip to step",
   saveChanges: "Save changes",
+  useDemoData: "Use demo data",
+  signIn: "Open workbench",
+  runChecks: "Run checks",
+  addDocument: "Add document",
+  remove: "Remove",
 };
 
 export const home = {
@@ -652,6 +668,23 @@ export const settings = {
   confirmReset: "Reset this case to step 1? The details and client files stay. Everything else is cleared.",
   confirmDelete: "Delete this case? You can't undo this. Download its JSON first if you want to keep a copy.",
   rulesTitle: "Rules and source ratings (read-only)",
+  spendTitle: "Spending",
+  spendCase: (usd: string, calls: number, max: number) => `This case: $${usd} · ${calls} of ${max} AI calls`,
+  spendToday: (usd: string, cap: string) => `Today: $${usd} of $${cap}`,
+  spendSearch: (used: number, max: number) => `Search credits for this case: ${used} of ${max}`,
+  checksTitle: "Set-up checks",
+  checksHint: "Checks the database, passcode, AI models and search key. Each red item says how to fix it.",
+  checksRunning: "Running the checks. This takes a few seconds.",
+  checksAllGreen: "Everything is set up.",
+  checksRed: (n: number) => `${n} ${n === 1 ? "item needs" : "items need"} fixing.`,
+  fix: "Fix",
+  archiveTitle: "Firm archive",
+  archiveHint: "Past studies the firm owns. They are searched by keyword in every live case and never leave the firm.",
+  archiveEmpty: "No documents yet. Add a past study to search it in live cases.",
+  archiveDocTitle: "Title",
+  archiveDate: "Date of the data",
+  freshAnswers: "Fresh answers",
+  freshAnswersHint: "Asks the AI again instead of reusing saved answers. Costs more; use it only after changing a file or prompt.",
   on: "On",
   off: "Off",
 };

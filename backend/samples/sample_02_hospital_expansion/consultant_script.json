@@ -1,0 +1,64 @@
+{
+  "description": "Generic consultant actions for automated runs. Decisions are made by rule, never by evidence id.",
+  "frame": "confirm",
+  "remove_ideas": [],
+  "lock_plan": true,
+  "step4": {
+    "tick_review": true,
+    "mark_sent": true
+  },
+  "review": {
+    "mark_all_auto_approved_seen": true,
+    "tick_sources_box": true,
+    "confirm_all_derivations": true,
+    "spot_check": "matches",
+    "rules": [
+      {
+        "match": {
+          "matches_belief": true
+        },
+        "action": "keep_belief"
+      },
+      {
+        "match": {
+          "script_tag": "belief"
+        },
+        "action": "keep_belief"
+      },
+      {
+        "match": {
+          "script_tag": "cross_check"
+        },
+        "action": "keep_cross_check"
+      },
+      {
+        "match": {
+          "script_tag": "reject_no_method"
+        },
+        "action": "reject",
+        "reason": "No method shown"
+      },
+      {
+        "match": {
+          "origin_type": "client_file"
+        },
+        "action": "keep_client_reported"
+      },
+      {
+        "match": {
+          "status": "needs_decision"
+        },
+        "action": "approve"
+      }
+    ]
+  },
+  "trips": [
+    {
+      "idea": "H2",
+      "reply_file": "ramp_up.csv",
+      "decide": "keep_client_reported",
+      "confirm_formula": false
+    }
+  ],
+  "conclusion": "Demand and occupancy both support opening, so the plan is achievable at the agreed targets. Plan for low insurance cover and confirm specialist hiring times before committing."
+}

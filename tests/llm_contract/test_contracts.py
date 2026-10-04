@@ -33,7 +33,7 @@ def test_invalid_twice_fails_visibly():
     c = Scripted([{"bad": 1}, "not json at all"])
     with pytest.raises(JobFailure) as e:
         run(interface.run(c, "FRAME", "", {}))
-    assert "Nothing was invented" in str(e.value)
+    assert "Nothing was made up" in str(e.value)
     assert len(c.calls) == 2                                         # never more than one retry
 
 

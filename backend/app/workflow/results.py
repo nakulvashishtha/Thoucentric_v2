@@ -47,16 +47,16 @@ def run_tests(case_id: int, hypothesis_code: str | None = None) -> None:
         if hypothesis_code:
             h = next((x for x in hs if x.code == hypothesis_code), None)
             if not h or not h.links_reopened_for_trip:
-                raise GateError(f"{hypothesis_code} has no return-trip evidence waiting to be tested.", [])
+                raise GateError(f"{hypothesis_code} has no new evidence to test.", [])
             trip_items = [e for e in s.exec(select(EvidenceItem).where(EvidenceItem.case_id == case_id)).all()
                           if e.trip_id and e.bucket == "trip"]
             open_items = [e.id for e in trip_items if e.status == "needs_decision"]
             if open_items:
-                raise GateError("Decide the trip evidence first: " + ", ".join(open_items) + ".", open_items)
+                raise GateError("Make a call on the new evidence first: " + ", ".join(open_items) + ".", open_items)
             trip = s.exec(select(Trip).where(Trip.case_id == case_id, Trip.hypothesis_code == h.code)
                           .order_by(Trip.n.desc())).first()
             if trip and trip.reply_file_id and not trip.sample_mix_json:
-                raise GateError("Record the sample-mix check (or mark it not applicable) first.", ["Sample-mix check"])
+                raise GateError("Finish the sample-mix check, or mark it as not needed.", ["Sample-mix check"])
             targets = [h]
         else:
             require(s, case, "run_tests")
@@ -105,7 +105,7 @@ def create_trip(case_id: int, code: str, override: bool = False, override_reason
         require(s, case, "trip")
         h = next((x for x in C.hypotheses(s, case_id) if x.code == code), None)
         if not h:
-            raise BadInput(f"Unknown idea {code}")
+            raise BadInput(f"There's no idea called {code}.")
         v = s.exec(select(Verdict).where(Verdict.case_id == case_id, Verdict.hypothesis_code == code,
                                          Verdict.current == True)).first()  # noqa: E712
         if v and v.result in ("holds", "fails") and v.confidence in ("high", "medium"):
@@ -113,7 +113,7 @@ def create_trip(case_id: int, code: str, override: bool = False, override_reason
                             f"{V.CONFIDENCE_LABELS[v.confidence]}). Follow-up requests are for ideas with not enough "
                             "evidence, sources that disagree, or weak confidence.", [])
         if h.links_reopened_for_trip:
-            raise GateError(f"Finish the open trip for {code} first.", [])
+            raise GateError(f"Finish the open request for {code} first.", [])
         prev = s.exec(select(Trip).where(Trip.case_id == case_id, Trip.hypothesis_code == code)).all()
         ok, msg = T.check_trip(len(prev), override, override_reason, rules()["trips"]["free"],
                                rules()["trips"]["max_with_override"])
@@ -121,7 +121,7 @@ def create_trip(case_id: int, code: str, override: bool = False, override_reason
             raise GateError(msg + ".", ["Override tick and reason"] if "override" in msg else [])
         unsent = [t for t in prev if not t.marked_sent_at]
         if unsent:
-            raise GateError(f"Trip {unsent[0].n} for {code} is drafted but not yet marked as sent.", [])
+            raise GateError(f"Request {unsent[0].n} for {code} is drafted but not marked as sent yet.", [])
         trip = Trip(case_id=case_id, hypothesis_code=code, n=len(prev) + 1,
                     override_reason=override_reason.strip() or None if len(prev) + 1 > rules()["trips"]["free"] else None)
         s.add(trip)
@@ -162,9 +162,9 @@ def edit_trip(case_id: int, tid: int, question: str) -> None:
     with session() as s:
         t = s.get(Trip, tid)
         if not t or t.case_id != case_id:
-            raise BadInput("trip not found")
+            raise BadInput("We couldn't find that request. Refresh the page and try again.")
         if t.marked_sent_at:
-            raise GateError("This trip was already marked as sent.", [])
+            raise GateError("This request is already marked as sent.", [])
         t.question = question
         s.add(t)
         s.commit()
@@ -175,9 +175,9 @@ def mark_trip_sent(case_id: int, tid: int) -> None:
     with session() as s:
         t = s.get(Trip, tid)
         if not t or t.case_id != case_id:
-            raise BadInput("trip not found")
+            raise BadInput("We couldn't find that request. Refresh the page and try again.")
         if not t.question.strip():
-            raise GateError("Wait for the question to be drafted.", [])
+            raise GateError("Wait for the question to be drafted, then try again.", [])
         t.marked_sent_at = now()
         s.add(t)
         s.commit()
@@ -192,11 +192,11 @@ def trip_reply(case_id: int, tid: int, filename: str, data: bytes):
         case = C.get_case(s, case_id)
         t = s.get(Trip, tid)
         if not t or t.case_id != case_id:
-            raise BadInput("trip not found")
+            raise BadInput("We couldn't find that request. Refresh the page and try again.")
         if not t.marked_sent_at:
-            raise GateError("Mark the question as sent before recording a reply.", ["Mark as sent"])
+            raise GateError("Mark the question as sent before adding the reply.", ["Mark as sent"])
         if t.reply_file_id:
-            raise GateError("This trip already has a reply.", [])
+            raise GateError("This request already has a reply.", [])
     fid = add_file(case_id, filename, data, "followup", trip_id=tid)
 
     async def job(ctx: jobs.JobCtx) -> None:
@@ -260,7 +260,7 @@ def record_sample_mix(case_id: int, tid: int, sample: dict, target: dict, not_ap
     with session() as s:
         t = s.get(Trip, tid)
         if not t or t.case_id != case_id:
-            raise BadInput("trip not found")
+            raise BadInput("We couldn't find that request. Refresh the page and try again.")
         if not_applicable:
             res = {"not_applicable": True}
         else:
@@ -499,7 +499,7 @@ def what_if(case_id: int, assumptions: dict, pass_lines: dict) -> dict:
 
 def save_conclusion(case_id: int, text: str) -> None:
     if not (text or "").strip():
-        raise BadInput("Write the conclusion first")
+        raise BadInput("Write your conclusion in the box first.")
     with session() as s:
         case = C.get_case(s, case_id)
         require(s, case, "conclusion")
@@ -569,12 +569,75 @@ def export_markdown(case_id: int) -> str:
     return "\n".join(lines)
 
 
+CASE_TABLES = ("Frame", "RuleSet", "Hypothesis", "EvidenceNeed", "ClientFile", "SourcePlanItem", "EvidenceItem",
+               "EvidenceLink", "Calc", "Verdict", "Trip", "Overall", "Summary", "Conclusion", "Activity")
+
+
 def export_json(case_id: int) -> str:
+    from ..db import models as M
     b = brief(case_id)
     with session() as s:
         acts = s.exec(select(Activity).where(Activity.case_id == case_id).order_by(Activity.id)).all()
         b["activity"] = [a.model_dump() for a in acts]
+        # full rows, so the case can be restored with "Import a case" after the free server restarts
+        tables = {"Case": [C.get_case(s, case_id).model_dump()]}
+        for name in CASE_TABLES:
+            model = getattr(M, name)
+            tables[name] = [r.model_dump() for r in s.exec(select(model).where(model.case_id == case_id)).all()]
+        b["tables"] = tables
     return json.dumps(b, indent=2, default=str)
+
+
+def import_case(data: dict) -> int:
+    """Restore a case from its JSON export as a new case. File and trip ids are remapped."""
+    from ..db import models as M
+    t = (data or {}).get("tables") or {}
+    if not t.get("Case"):
+        raise BadInput("This file isn't a case export from this tool. Use Download JSON on the last step.")
+    try:
+        with session() as s:
+            c = M.Case(**{k: v for k, v in t["Case"][0].items() if k != "id"})
+            s.add(c)
+            s.commit()
+            cid = c.id
+            files, trips = {}, {}
+            for row in t.get("ClientFile", []):
+                f = M.ClientFile(**{**row, "id": None, "case_id": cid})
+                s.add(f)
+                s.flush()
+                files[row["id"]] = f.id
+            for row in t.get("Trip", []):
+                tr = M.Trip(**{**row, "id": None, "case_id": cid, "reply_file_id": files.get(row.get("reply_file_id"))})
+                s.add(tr)
+                s.flush()
+                trips[row["id"]] = tr.id
+            for f in s.exec(select(M.ClientFile).where(M.ClientFile.case_id == cid)).all():
+                if f.trip_id:
+                    f.trip_id = trips.get(f.trip_id)
+                    s.add(f)
+            for name in CASE_TABLES:
+                if name in ("ClientFile", "Trip"):
+                    continue
+                model = getattr(M, name)
+                for row in t.get(name, []):
+                    row = {**row, "case_id": cid}
+                    for key in ("id", "pk") if name != "EvidenceItem" else ("pk",):
+                        if key in row and key in model.model_fields and name not in (
+                                "Frame", "RuleSet", "Overall", "Summary", "Conclusion"):
+                            row[key] = None
+                    if name == "EvidenceItem":
+                        row["file_id"] = files.get(row.get("file_id"))
+                        row["trip_id"] = trips.get(row.get("trip_id"))
+                    if name == "EvidenceNeed":
+                        row["covered_by_file_id"] = files.get(row.get("covered_by_file_id"))
+                    s.add(model(**row))
+            s.commit()
+    except BadInput:
+        raise
+    except Exception:
+        raise BadInput("We couldn't read this export. Check it's the JSON file this tool downloaded, then try again.")
+    activity.log(cid, "consultant", "case_imported", 1, "Restored this case from a JSON export")
+    return cid
 
 
 def export_activity_csv(case_id: int) -> str:

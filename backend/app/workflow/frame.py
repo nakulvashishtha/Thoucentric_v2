@@ -67,7 +67,7 @@ def add_file(case_id: int, filename: str, data: bytes, kind: str = "initial", tr
     except fparse.UnsupportedFile as e:
         raise BadInput(str(e))
     except Exception:
-        raise BadInput(f"{filename} could not be read. Check that it is a valid csv, xlsx or txt file.")
+        raise BadInput(f"We couldn't read {filename}. Try again, or upload it as a csv, xlsx or txt file.")
     with session() as s:
         C.get_case(s, case_id)
         f = ClientFile(case_id=case_id, filename=filename, kind=kind, text_extract=text, trip_id=trip_id)
@@ -86,7 +86,7 @@ def set_file_figures(case_id: int, file_id: int, figures: list[dict]) -> None:
     with session() as s:
         f = s.get(ClientFile, file_id)
         if not f or f.case_id != case_id:
-            raise BadInput("file not found")
+            raise BadInput("We couldn't find that file. Refresh the page and try again.")
         clean = []
         for fig in figures:
             if fig.get("value") in (None, "") or not fig.get("unit"):
@@ -196,7 +196,7 @@ def confirm_frame(case_id: int):
         fr = s.get(Frame, case_id)
         if not all([fr.client_belief.strip(), fr.decision.strip(), fr.case_measure_name.strip(),
                     fr.case_measure_definition.strip()]):
-            raise GateError("Fill in all three cards before confirming.", ["belief", "decision", "measure"])
+            raise GateError("Fill in all three boxes first.", ["belief", "decision", "measure"])
         fr.confirmed_at = now()
         s.add(fr)
         c.current_step = 3
@@ -337,7 +337,7 @@ def edit_hypotheses(case_id: int, rows: list[dict]) -> None:
             h = existing.get(row.get("code"))
             if h is None:
                 if len([x for x in existing.values() if not x.removed_reason]) >= rules()["limits"]["max_ideas"]:
-                    raise BadInput(f"At most {rules()['limits']['max_ideas']} ideas")
+                    raise BadInput(f"You can test up to {rules()['limits']['max_ideas']} ideas. Remove one first.")
                 h = Hypothesis(case_id=case_id, code=row.get("code") or f"H{len(existing) + 1}",
                                text=row.get("text", ""), order=len(existing))
                 existing[h.code] = h
@@ -345,7 +345,7 @@ def edit_hypotheses(case_id: int, rows: list[dict]) -> None:
             for k, v in row.items():
                 if k in EDITABLE and getattr(h, k) != v:
                     if k == "removed_reason" and v is not None and not str(v).strip():
-                        raise BadInput("Removing an idea needs a reason")
+                        raise BadInput("Add a short reason for removing this idea.")
                     setattr(h, k, v)
                     if k == "removed_reason":
                         changes.append(f"removed {h.code} ({v})" if v else f"restored {h.code}")
@@ -365,27 +365,27 @@ def plan_problems(s, case_id: int) -> list[str]:
     hs = C.hypotheses(s, case_id)
     probs = []
     if not hs:
-        probs.append("Keep at least one idea")
+        probs.append("keep at least one idea")
     if not any(h.must_have for h in hs):
-        probs.append("Mark at least one idea as a must-have")
+        probs.append("mark at least one idea as critical")
     links = C.links_for(s, case_id)
     for h in hs:
         if C.pass_line(h) is None:
-            probs.append(f"{h.code} needs a pass line")
+            probs.append(f"give {h.code} a target")
         if h.pass_line_formula:
             try:
                 whatif.eval_formula(h.pass_line_formula, C.assumption_values(h))
             except Exception as e:
-                probs.append(f"{h.code}: the pass-line formula does not work ({e})")
+                probs.append(f"the target formula for {h.code} doesn't work ({e})")
         if not h.measure_name.strip() or not h.measure_unit.strip():
-            probs.append(f"{h.code} needs a measure and unit")
+            probs.append(f"give {h.code} a measure and unit")
         if h.fact_type not in ("market", "client_operational"):
-            probs.append(f"{h.code} needs a fact type")
+            probs.append(f"choose a type for {h.code}")
         if not h.pass_line_source_note.strip():
-            probs.append(f"{h.code} needs a stated source for its pass line")
+            probs.append(f"say where the {h.code} target comes from")
         if h.pass_line_source_type == "benchmark" and not any(
                 ln.hypothesis_code == h.code and ln.role == "sets_pass_line" for ln in links):
-            probs.append(f"{h.code} says its pass line comes from a benchmark, but no benchmark source was found")
+            probs.append(f"the {h.code} target says it comes from a benchmark, but no benchmark was found; change its source")
     return probs
 
 
@@ -394,10 +394,10 @@ def lock_plan(case_id: int, ticked: bool):
         c = C.get_case(s, case_id)
         require(s, c, "lock_plan")
         if not ticked:
-            raise GateError("Tick the box to confirm the plan before locking it.", ["Tick the box"])
+            raise GateError("Tick the box to confirm the targets first.", ["Tick the box"])
         probs = plan_problems(s, case_id)
         if probs:
-            raise GateError("The plan is not ready to lock: " + "; ".join(probs) + ".", probs)
+            raise GateError("Fix these first: " + "; ".join(probs) + ".", probs)
         t = now()
         for h in C.hypotheses(s, case_id, include_removed=True):
             h.locked_at = t

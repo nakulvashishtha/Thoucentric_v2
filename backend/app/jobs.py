@@ -83,10 +83,10 @@ def start(case_id: int, kind: str, fn: Callable[[JobCtx], Awaitable[None]], step
             _set(job_id, status="done", finished_at=now())
         except JobFailure as e:
             _set(job_id, status="failed", finished_at=now(), error=str(e))
-            activity.log(case_id, "system", "job_failed", step, f"{kind} failed: {e}", {"job": job_id})
+            activity.log(case_id, "system", "job_failed", step, str(e), {"job": job_id})
         except Exception as e:  # never a stack trace on screen; log it for the operator
             log.exception("job %s failed", kind)
-            msg = f"Something went wrong while running {kind.replace('_', ' ')}. ({type(e).__name__})"
+            msg = f"Something went wrong on our side, so this step didn't finish. Press Try again. ({type(e).__name__})"
             _set(job_id, status="failed", finished_at=now(), error=msg)
             activity.log(case_id, "system", "job_failed", step, msg, {"job": job_id})
         finally:
@@ -115,7 +115,7 @@ def fail_orphans() -> None:
     with session() as s:
         for j in s.exec(select(Job).where(Job.status.in_(["queued", "running"]))).all():
             j.status = "failed"
-            j.error = "The server restarted while this was running. Press Retry."
+            j.error = "The server restarted while this was running. Press Try again."
             j.finished_at = now()
             s.add(j)
         s.commit()

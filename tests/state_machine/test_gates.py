@@ -42,7 +42,7 @@ def test_lock_requires_a_must_have(client):
     r.call("POST", "/frame/confirm"); r.wait("plan")
     r.call("PUT", "/hypotheses", json=[{"code": "H1", "must_have": False}, {"code": "H2", "must_have": False}])
     res = client.post(f"/api/cases/{r.cid}/plan/lock", json={"ticked": True})
-    assert res.status_code == 409 and "must-have" in res.json()["reason"]
+    assert res.status_code == 409 and "critical" in res.json()["reason"]
 
 
 def test_review_gate_and_links_lock_after_tests(client):
@@ -100,7 +100,7 @@ def test_trip_evidence_reopens_only_that_idea_and_trip_limits(client):
             body.update(override=True, override_reason="Client asked for one more check")
         res = client.post(f"/api/cases/{r.cid}/trips", json=body)
         if n == 4:
-            assert res.status_code == 409 and "refused" in res.json()["reason"]
+            assert res.status_code == 409 and "limit is 3" in res.json()["reason"]
             break
         assert res.status_code == 200, res.text
         t = res.json()["trip_id"]

@@ -16,12 +16,12 @@ from ..search.simulated import FixtureSearch
 from ..settings import fixture_delay, rules
 
 STEPS = [
-    (1, "Type the ask", 0, True), (2, "Check the frame", 0, True), (3, "Agree the plan", 0, True),
-    (4, "Plan the evidence", 1, True), (5, "Collect", 1, False), (6, "Clean", 1, False),
-    (7, "Review", 1, True), (8, "Test", 2, False), (9, "Fill the gaps", 2, True),
-    (10, "Add it up", 2, False), (11, "Stress-test", 2, False), (12, "Decide", 2, True),
+    (1, "Describe the ask", 0, True), (2, "Confirm the question", 0, True), (3, "Set the targets", 0, True),
+    (4, "Plan the research", 1, True), (5, "Gathering evidence", 1, False), (6, "Checking the evidence", 1, False),
+    (7, "Review the evidence", 1, True), (8, "Results", 2, False), (9, "Fill the gaps", 2, True),
+    (10, "The answer", 2, False), (11, "What if...", 2, False), (12, "Your conclusion", 2, True),
 ]
-PHASES = ["Frame the question", "Gather and check", "Work out what it means"]
+PHASES = ["Frame", "Gather", "Conclude"]
 COUNTED_STATUSES = {"approved", "auto_approved", "client_reported"}
 
 
@@ -52,8 +52,8 @@ def llm_for(case: Case) -> LLMClient:
     if case.mode == "fixtures":
         pack = pack_for(case)
         if not pack:
-            raise JobFailure("This blank case needs live mode: fixtures mode only has stored replies for the "
-                             "sample cases. Load a sample case, or add live keys and switch to live mode.")
+            raise JobFailure("A new case needs the live AI and search services, but this app is in demo data mode. "
+                             "Try a sample case instead, or add the live keys and switch to live mode in Settings.")
         return FixtureLLM(pack["fixtures"])
     from ..llm.live import LiveLLM  # built in the live layer
     return LiveLLM()
@@ -63,7 +63,7 @@ def search_for(case: Case):
     if case.mode == "fixtures":
         pack = pack_for(case)
         if not pack:
-            raise JobFailure("This blank case needs live mode. Load a sample case to use fixtures mode.")
+            raise JobFailure("A new case needs live search. Try a sample case instead, or switch to live mode in Settings.")
         return FixtureSearch(pack["seeds"])
     from ..search.live import live_search  # built in the live layer
     return live_search()

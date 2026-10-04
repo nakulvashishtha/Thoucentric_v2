@@ -49,9 +49,34 @@ def requested_mode() -> str:
     return m if m in ("live", "fixtures") else "live"
 
 
+APP_SETTINGS_DEFAULTS = {"mode": "", "fast_demo": True, "larger_text": False}
+
+
+def app_settings() -> dict:
+    """Settings changed in the settings drawer, kept in DATA_DIR (no secrets)."""
+    import json
+    p = data_dir() / "app_settings.json"
+    try:
+        return {**APP_SETTINGS_DEFAULTS, **json.loads(p.read_text(encoding="utf-8"))}
+    except (OSError, ValueError):
+        return dict(APP_SETTINGS_DEFAULTS)
+
+
+def save_app_settings(changes: dict) -> dict:
+    import json
+    cur = app_settings()
+    for k in APP_SETTINGS_DEFAULTS:
+        if k in changes:
+            cur[k] = changes[k]
+    if cur["mode"] not in ("", "live", "fixtures"):
+        cur["mode"] = ""
+    (data_dir() / "app_settings.json").write_text(json.dumps(cur), encoding="utf-8")
+    return cur
+
+
 def effective_mode() -> tuple[str, str]:
     """Live is the default, but without both keys the app opens in fixtures mode with a notice."""
-    if requested_mode() == "fixtures":
+    if requested_mode() == "fixtures" or app_settings()["mode"] == "fixtures":
         return "fixtures", ""
     k = keys_present()
     if not (k["ANTHROPIC_API_KEY"] and k["TAVILY_API_KEY"]):

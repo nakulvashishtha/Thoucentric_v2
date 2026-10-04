@@ -24,15 +24,16 @@ def review_status(s: Session, case_id: int) -> dict:
         "sources_box": bool(st.get("sources_reviewed_at")),
     }
     missing = []
-    if out["auto_seen"] < out["auto_total"]:
-        missing.append(f"Mark the remaining {out['auto_total'] - out['auto_seen']} auto-approved sources as Seen")
     if out["decided"] < out["decision_total"]:
         n = out["decision_total"] - out["decided"]
-        missing.append(f"Decide the {n} remaining item{'s' if n != 1 else ''}")
+        missing.append(f"Decide {n} more item{'s' if n != 1 else ''}")
+    if out["auto_seen"] < out["auto_total"]:
+        n = out["auto_total"] - out["auto_seen"]
+        missing.append(f"Look at {n} more source{'s' if n != 1 else ''}")
     if out["spot_done"] < out["spot_total"]:
-        missing.append("Record the spot check")
+        missing.append("Do the quick double-check")
     if not out["sources_box"]:
-        missing.append("Tick 'I have reviewed these sources'")
+        missing.append("Tick \"I've checked these sources\"")
     out["missing"] = missing
     out["ready"] = not missing
     return out
@@ -79,7 +80,7 @@ def step_status(s: Session, case: Case) -> dict:
         else:
             state = "open"
         out[n] = {"n": n, "title": title, "phase": phase, "signoff": signoff, "state": state,
-                  "locked_reason": f"Finish step {unmet[0]} ({names[unmet[0]]}) first" if unmet else ""}
+                  "locked_reason": f"Finish \"{names[unmet[0]]}\" first" if unmet else ""}
     for n in (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12):
         if out[n]["state"] == "open":
             if n == 9 and not reopened and not [t for t in trips if not t.retested_at]:
@@ -106,49 +107,50 @@ def require(s: Session, case: Case, action: str) -> None:
             raise GateError(reason, required)
 
     if action == "edit_case":
-        need(not done[2], "The ask is fixed once the frame is confirmed.", ["Reset the case to change the ask"])
+        need(not done[2], "The ask can't change once the question is confirmed.", ["Reset the case to change the ask"])
     elif action == "read_ask":
         need(bool(case.client_name and case.country and case.industry and case.function and case.raw_ask),
-             "Enter the client, country, industry, function and the ask first.",
+             "Fill in the client, country, industry, function and the ask first.",
              ["client", "country", "industry", "function", "ask"])
-        need(not done[2], "The frame is already confirmed.", [])
+        need(not done[2], "The question is already confirmed.", [])
     elif action in ("edit_frame", "confirm_frame"):
-        need(done[1], "Read the ask first so the agent can propose a frame.", ["Read the ask"])
-        need(not done[2], "The frame is already confirmed.", [])
+        need(done[1], "Check the ask first, so we can draft the question.", ["Check the ask"])
+        need(not done[2], "The question is already confirmed.", [])
     elif action in ("edit_hypotheses", "lock_plan"):
-        need(done[2], "Confirm the frame first.", ["Confirm the frame at step 2"])
-        need(not done[3], "The plan is locked. Pass lines, measures, tolerances and thresholds cannot change "
-             "after step 3.", ["Locked at step 3"])
+        need(done[2], "Confirm the question first.", ["Confirm the question"])
+        need(not done[3], "The targets are locked. Targets, measures, margins and the quality check can't change "
+             "after you lock them.", ["Locked"])
     elif action in ("edit_source_plan", "mark_sent"):
-        need(done[3], "Lock the plan at step 3 first.", ["Lock the plan"])
-        need(not done[4], "Requests were already marked as sent; they can't be edited afterwards.", [])
+        need(done[3], "Lock the targets first.", ["Lock targets"])
+        need(not done[4], "The requests are already marked as sent, so they can't change.", [])
         if action == "mark_sent":
-            need(bool(st.get("route_done")), "Wait for the evidence plan to finish.", ["Evidence plan ready"])
+            need(bool(st.get("route_done")), "Wait for the research plan to finish.", ["Research plan ready"])
     elif action == "collect":
-        need(done[4], "Mark the requests as sent at step 4 first.", ["Mark requests as sent"])
+        need(done[4], "Mark the requests as sent first.", ["Mark as sent"])
     elif action == "upload_reply":
-        need(done[4] and not done[5], "Replies are uploaded at step 5 while collection is open; later replies "
-             "come in through a return trip at step 9.", ["Step 5 open"])
+        need(done[4] and not done[5], "Replies can be added while evidence is being gathered. Later replies go "
+             "in at Fill the gaps.", ["Gathering open"])
     elif action == "clean":
-        need(done[5], "Collection must finish or be stopped first.", ["Finish or stop collecting"])
+        need(done[5], "Let collecting finish, or stop it, first.", ["Finish or stop collecting"])
     elif action in ("decide", "edit_links", "seen", "spot_check", "confirm_sources"):
-        need(done[6], "The clean step must finish first.", ["Clean finished"])
-        need(not done[7], "Tests have run, so decisions and links are locked (except evidence from a return trip "
-             "at step 9).", ["Use step 9 for new evidence"])
+        need(done[6], "Wait for the evidence check to finish.", ["Evidence checked"])
+        need(not done[7], "The tests have run, so decisions and links are locked. New evidence goes in at Fill "
+             "the gaps.", ["Use Fill the gaps"])
     elif action == "run_tests":
-        need(done[6], "The clean step must finish first.", ["Clean finished"])
+        need(done[6], "Wait for the evidence check to finish.", ["Evidence checked"])
         need(not done[7], "The tests have already run.", [])
         rv = review_status(s, case.id)
-        need(rv["ready"], "Finish the review first: " + "; ".join(rv["missing"]) + ".", rv["missing"])
+        need(rv["ready"], "Finish the review first: " + "; ".join(m[0].lower() + m[1:] for m in rv["missing"])
+             + ".", rv["missing"])
     elif action == "trip":
-        need(done[8], "Run the tests at step 8 first.", ["Run the tests"])
+        need(done[8], "Run the tests first.", ["Run tests"])
     elif action == "addup":
-        need(done[8], "Run the tests at step 8 first.", ["Run the tests"])
-        need(not status["reopened"], "Decide the return-trip evidence and test that idea again first.",
+        need(done[8], "Run the tests first.", ["Run tests"])
+        need(not status["reopened"], "Make a call on the new evidence and test the idea again first.",
              [f"Test {c} again" for c in status["reopened"]])
     elif action == "whatif":
-        need(done[8], "Run the tests at step 8 first.", ["Run the tests"])
+        need(done[8], "Run the tests first.", ["Run tests"])
     elif action == "conclusion":
-        need(done[10], "Add it up at step 10 first.", ["Add it up"])
+        need(done[10], "Add up the answer first.", ["Add it up"])
     else:
         raise GateError(f"Unknown action {action}", [])

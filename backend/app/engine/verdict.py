@@ -60,8 +60,10 @@ def with_unit(v: float, unit: str) -> str:
     return f"{fmt(v)}{'' if u.startswith('%') or not u else ' '}{u}"
 
 
-def _fig_text(f: Fig) -> str:
-    return fmt(f.low) if f.low == f.high else f"{fmt(f.low)} to {fmt(f.high)}"
+def _fig_text(f: Fig, unit: str = "") -> str:
+    if f.low == f.high:
+        return with_unit(f.low, unit) if unit else fmt(f.low)
+    return f"{fmt(f.low)} to {with_unit(f.high, unit) if unit else fmt(f.high)}"
 
 
 def evaluate(figs: list[Fig], L: float, cmp: str, tol_pct: float, fact_type: str, unit: str,
@@ -74,11 +76,13 @@ def evaluate(figs: list[Fig], L: float, cmp: str, tol_pct: float, fact_type: str
     for f in figs:
         side, boundary = classify(f.low, f.high, L, cmp, tol_pct)
         classes.append({"evidence_id": f.evidence_id, "figure": _fig_text(f), "side": side, "boundary": boundary,
-                        "client_reported": f.client_reported, "calculated": f.calculated})
+                        "straddles": f.low != f.high and f.low <= L <= f.high, "text": _fig_text(f, unit),
+                        "low": f.low, "high": f.high, "client_reported": f.client_reported,
+                        "calculated": f.calculated})
     codes: list[str] = []
     line = with_unit(L, unit)
     target = f"the target of {'at least' if cmp == '>=' else 'at most'} {line}"
-    figures = _join(sorted({_fig_text(f) for f in figs})) if figs else ""
+    figures = _join(sorted({_fig_text(f, unit) for f in figs})) if figs else ""
     if result == "not_enough":
         codes.append("NOT_ENOUGH_SOURCES")
         if n == 0:
@@ -89,11 +93,12 @@ def evaluate(figs: list[Fig], L: float, cmp: str, tol_pct: float, fact_type: str
                    f"{'market figure' if fact_type == 'market' else 'idea'} needs {need}.")
         return VerdictResult(result, "none", codes, why, [f.evidence_id for f in figs], classes)
 
-    boundary_figs = [c["figure"] for c in classes if c["boundary"]]
+    straddle = [c["text"] for c in classes if c["boundary"] and c["straddles"]]
+    near = [c["text"] for c in classes if c["boundary"] and not c["straddles"]]
     if result == "conflicting":
         codes.append("CONFLICTING")
-        passing = [c["figure"] for c in classes if c["side"] == "pass"]
-        failing = [c["figure"] for c in classes if c["side"] == "fail"]
+        passing = [c["text"] for c in classes if c["side"] == "pass"]
+        failing = [c["text"] for c in classes if c["side"] == "fail"]
         why = (f"The sources disagree. {_join(passing)} meet{'s' if len(passing) == 1 else ''} {target}, "
                f"but {_join(failing)} do{'es' if len(failing) == 1 else ''} not.")
     else:
@@ -101,9 +106,15 @@ def evaluate(figs: list[Fig], L: float, cmp: str, tol_pct: float, fact_type: str
         if len(figs) == 1:
             verb += "es" if verb == "miss" else "s"
         why = f"{figures} {verb} {target}"
-        if boundary_figs:
+        if straddle or near:
             codes.append("BOUNDARY")
-            why += f". But {_join(boundary_figs)} is a close call: it sits within the {fmt(tol_pct)}% margin or spans the target"
+            parts = []
+            if straddle:
+                parts.append(f"{_join(straddle)} span{'s' if len(straddle) == 1 else ''} the target")
+            if near:
+                parts.append(f"{_join(near)} {'is' if len(near) == 1 else 'are'} within the {fmt(tol_pct)}% "
+                             "close-call margin")
+            why += ". It's a close call: " + " and ".join(parts)
         elif result == "holds":
             codes.append("ALL_PASS_CLEAR")
             why += " by more than the close-call margin"

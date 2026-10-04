@@ -14,11 +14,11 @@ from ..state_machine import review_status, step_status
 from . import common as C
 
 STATUS_LABELS = {
-    "auto_approved": "Approved by checklist", "approved": "Approved by consultant",
-    "needs_decision": "Needs your decision", "client_reported": "Client-reported",
-    "belief_under_test": "Claim being tested", "cross_check": "Cross-check", "pass_line_source": "Pass-line source",
-    "rejected": "Rejected", "pending": "Pending", "unreadable": "Could not read", "duplicate": "Copy",
-    "pending_clean": "Waiting to be cleaned",
+    "auto_approved": "Passed the quality check", "approved": "Accepted by you",
+    "needs_decision": "Needs your call", "client_reported": "From the client",
+    "belief_under_test": "Client's claim", "cross_check": "Sense check only", "pass_line_source": "Target source",
+    "rejected": "Rejected", "pending": "Waiting", "unreadable": "Could not read", "duplicate": "Duplicate",
+    "pending_clean": "Not checked yet",
 }
 
 
@@ -62,7 +62,7 @@ def build(case_id: int) -> dict:
     for e in items:
         d = e.model_dump()
         d["links"] = by_item.get(e.id, [])
-        d["status_label"] = (f"Copy of {e.duplicate_of}" if e.duplicate_of else STATUS_LABELS.get(e.status, e.status))
+        d["status_label"] = (f"Duplicate of {e.duplicate_of}" if e.duplicate_of else STATUS_LABELS.get(e.status, e.status))
         tier = (e.credibility_json or {}).get("tier")
         d["tier"] = tier
         d["tier_label"] = credibility.tier_label(tier) if e.status not in ("pending",) else ""

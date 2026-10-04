@@ -27,4 +27,4 @@ def test_blank_case_in_fixtures_mode_explains_it_needs_live(client):
         if j and j["status"] in ("done", "failed"):
             break
         time.sleep(0.05)
-    assert j["status"] == "failed" and "needs live mode" in j["error"]
+    assert j["status"] == "failed" and "live" in j["error"] and "sample" in j["error"]

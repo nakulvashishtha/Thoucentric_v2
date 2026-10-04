@@ -9,8 +9,8 @@ from pydantic import BaseModel
 
 from .. import activity, jobs, samples
 from ..errors import BadInput
-from ..settings import CONFIG_DIR, effective_mode, keys_present
-from ..workflow import bundle, frame, gather, results
+from ..settings import CONFIG_DIR, app_settings, effective_mode, keys_present, save_app_settings
+from ..workflow import bundle, frame, gather, replay, results
 
 router = APIRouter(prefix="/api")
 
@@ -48,6 +48,18 @@ def create_case(body: CaseIn):
     return {"id": cid}
 
 
+@router.post("/cases/import")
+async def import_case(file: Optional[UploadFile] = File(None)):
+    import json
+    if file is None:
+        raise BadInput("Choose the JSON file you downloaded from this tool.")
+    try:
+        data = json.loads(file.file.read().decode("utf-8"))
+    except (ValueError, UnicodeDecodeError):
+        raise BadInput("This file isn't valid JSON. Use the file from Download JSON on the last step.")
+    return {"id": results.import_case(data)}
+
+
 @router.get("/cases/{cid}")
 def get_case(cid: int):
     return bundle.build(cid)
@@ -75,7 +87,7 @@ def reset_case(cid: int):
 async def upload(cid: int, file: Optional[UploadFile] = File(None), kind: str = Form("initial"),
                  text: Optional[str] = Form(None), filename: Optional[str] = Form(None)):
     if kind not in ("initial", "followup", "expert_note", "archive"):
-        raise BadInput("Unknown file kind")
+        raise BadInput("That kind of file isn't expected here.")
     name, data = _payload(file, text, filename)
     if kind == "initial":
         fid = frame.add_file(cid, name, data, "initial")
@@ -89,7 +101,7 @@ def _payload(file: Optional[UploadFile], text: Optional[str], filename: Optional
         return file.filename or "upload", file.file.read()
     if text and text.strip():
         return (filename or "pasted-note.txt"), text.encode("utf-8")
-    raise BadInput("Upload a file or paste some text")
+    raise BadInput("Add a file or paste some text first.")
 
 
 @router.put("/cases/{cid}/files/{fid}/figures")
@@ -238,6 +250,7 @@ def edit_trip(cid: int, tid: int, body: dict):
 
 
 @router.post("/cases/{cid}/trips/{tid}/sent")
+@router.post("/cases/{cid}/trips/{tid}/mark-sent")
 def trip_sent(cid: int, tid: int):
     results.mark_trip_sent(cid, tid)
     return ok()
@@ -254,6 +267,22 @@ async def trip_reply(cid: int, tid: int, file: Optional[UploadFile] = File(None)
 def sample_mix(cid: int, tid: int, body: dict):
     return results.record_sample_mix(cid, tid, body.get("sample") or {}, body.get("target") or {},
                                      bool(body.get("not_applicable")), body.get("note") or "")
+
+
+@router.post("/cases/{cid}/retest")
+def retest(cid: int, body: dict):
+    results.run_tests(cid, body.get("hypothesis") or "")
+    return ok()
+
+
+@router.get("/cases/{cid}/unknowns")
+def unknowns(cid: int):
+    return (bundle.build(cid).get("summary") or {}).get("unknowns") or []
+
+
+@router.post("/cases/{cid}/sample/advance")
+def sample_advance(cid: int, to: int):
+    return ok(job=jv(replay.advance(cid, to)))
 
 
 @router.post("/cases/{cid}/addup/run")
@@ -287,11 +316,13 @@ def export(cid: int, format: str = "md"):
     if format == "activity_csv":
         return PlainTextResponse(results.export_activity_csv(cid), media_type="text/csv",
                                  headers={"Content-Disposition": f'attachment; filename="{title}_activity.csv"'})
-    raise BadInput("format must be md, json, html or activity_csv")
+    raise BadInput("Choose Markdown, JSON or the printable page.")
 
 
 @router.get("/cases/{cid}/activity")
-def get_activity(cid: int, since_id: int = 0):
+def get_activity(cid: int, since_id: int = 0, format: str = "json"):
+    if format == "csv":
+        return export(cid, "activity_csv")
     return activity.since(cid, since_id)
 
 
@@ -299,7 +330,7 @@ def get_activity(cid: int, since_id: int = 0):
 def get_job(cid: int, jid: int):
     j = bundle.job(jid)
     if not j:
-        raise BadInput("job not found")
+        raise BadInput("We lost track of that task. Refresh the page.")
     return j
 
 
@@ -315,7 +346,7 @@ def load_sample(name: str):
     try:
         cid = frame.load_sample(name)
     except KeyError:
-        raise BadInput(f"No sample called {name}")
+        raise BadInput("That sample isn't available.")
     return {"id": cid}
 
 
@@ -330,9 +361,15 @@ def sample_reply(name: str, filename: str):
                     headers={"Content-Disposition": f'attachment; filename="{filename}"'})
 
 
+@router.put("/settings")
+def put_settings(body: dict):
+    save_app_settings(body)
+    return get_settings()
+
+
 @router.get("/settings")
 def get_settings():
     mode, notice = effective_mode()
-    return {"mode": mode, "notice": notice, "keys": keys_present(),
+    return {"mode": mode, "notice": notice, "keys": keys_present(), "app": app_settings(),
             "rules_yaml": (CONFIG_DIR / "rules.yaml").read_text(encoding="utf-8"),
             "registry_yaml": (CONFIG_DIR / "source_registry.yaml").read_text(encoding="utf-8")}

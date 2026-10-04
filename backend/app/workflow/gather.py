@@ -174,14 +174,14 @@ def edit_source_plan(case_id: int, rows: list[dict]) -> None:
                 p = existing[r["id"]]
                 if "included" in r and bool(r["included"]) != p.included:
                     if not r["included"] and not (r.get("removed_reason") or "").strip():
-                        raise BadInput("Unticking a source needs a short reason")
+                        raise BadInput("Add a short reason for not using this source.")
                     p.included = bool(r["included"])
                     p.removed_reason = None if p.included else r.get("removed_reason")
                     msgs.append(f"{'included' if p.included else 'removed'} {p.source_name}")
                 s.add(p)
             else:
                 if not r.get("source_name") or not r.get("stated_tier") or not (r.get("reason") or "").strip():
-                    raise BadInput("A new source needs a name, a stated tier and a reason")
+                    raise BadInput("A new source needs a name, its quality and a reason.")
                 s.add(_plan_item(case, r))
                 msgs.append(f"added {r['source_name']} as Tier {r['stated_tier']}")
         s.commit()
@@ -195,7 +195,7 @@ def mark_sent(case_id: int, reviewed: bool):
         case = C.get_case(s, case_id)
         require(s, case, "mark_sent")
         if not reviewed:
-            raise GateError("Tick 'I have reviewed the coverage, the source plan and what leaves the firm' first.",
+            raise GateError("Tick \"I've checked what goes out\" first.",
                             ["Review tick"])
         C.flag(s, case, step4_reviewed_at=now(), requests_marked_sent_at=now())
         case.current_step = 5
@@ -226,7 +226,7 @@ def start_collect(case_id: int):
     with session() as s:
         require(s, C.get_case(s, case_id), "collect")
         if (C.get_case(s, case_id).settings_json or {}).get("collect_finished_at"):
-            raise GateError("Collection has already finished.", [])
+            raise GateError("Collecting has already finished.", [])
 
     async def job(ctx: jobs.JobCtx) -> None:
         with session() as s:
@@ -730,22 +730,22 @@ def _can_touch(s, case: Case, e: EvidenceItem, action: str) -> None:
         hcodes = {ln.hypothesis_code for ln in C.links_for(s, case.id) if ln.evidence_id == e.id}
         reopened = {h.code for h in C.hypotheses(s, case.id) if h.links_reopened_for_trip}
         if not hcodes & reopened and not (hcodes == set() and reopened):
-            raise GateError("This trip's idea has been tested again, so its evidence is locked.", [])
+            raise GateError("This idea has been tested again, so its evidence is locked.", [])
         return
     require(s, case, action)
 
 
 def decide(case_id: int, eid: str, action: str, reason: str = "", confirm_formula: bool = False) -> None:
     if action not in DECISIONS:
-        raise BadInput(f"Unknown decision {action}")
+        raise BadInput("That choice isn't available. Refresh the page and try again.")
     with session() as s:
         case = C.get_case(s, case_id)
         e = _get(s, case_id, eid)
         _can_touch(s, case, e, "decide")
         if e.bucket not in ("decision", "trip") and not (e.bucket == "auto" and action == "reject"):
-            raise GateError(f"{eid} is not waiting for a decision.", [])
+            raise GateError(f"{eid} doesn't need your call.", [])
         if action == "reject" and not reason.strip():
-            raise GateError("Rejecting needs a reason.", ["reason"])
+            raise GateError("Add a short reason for rejecting it.", ["reason"])
         figs = [dict(f) for f in e.figures_json or []]
         derived = [f for f in figs if f.get("kind") == "calculated"]
         if confirm_formula:
@@ -758,7 +758,7 @@ def decide(case_id: int, eid: str, action: str, reason: str = "", confirm_formul
         if action in ("approve", "keep_client_reported") and any(
                 not f["derivation"].get("formula_confirmed") for f in derived
                 if _figure_used(s, case_id, eid, figs.index(f))):
-            raise GateError(f"Confirm the formula for {eid} before approving it.", ["Confirm the formula"])
+            raise GateError(f"Confirm the formula for {eid} before you accept it.", ["Confirm the formula"])
         if action == "keep_cross_check":
             for ln in s.exec(select(EvidenceLink).where(EvidenceLink.case_id == case_id,
                                                         EvidenceLink.evidence_id == eid)).all():
@@ -798,7 +798,7 @@ def set_links(case_id: int, eid: str, rows: list[dict]) -> None:
         for r in rows:
             if r.get("hypothesis_code") not in codes or r.get("role") not in ("supports_test", "cross_check",
                                                                               "context"):
-                raise BadInput("Links need a kept idea and a role (supports the test, cross-check or context)")
+                raise BadInput("Choose an idea and how the evidence is used.")
         for old in s.exec(select(EvidenceLink).where(EvidenceLink.case_id == case_id,
                                                      EvidenceLink.evidence_id == eid)).all():
             if old.role != "sets_pass_line":
@@ -818,7 +818,7 @@ def mark_seen(case_id: int, eid: str, send_to_review: bool = False) -> None:
         require(s, case, "seen")
         e = _get(s, case_id, eid)
         if e.bucket != "auto":
-            raise GateError(f"{eid} is not an auto-approved item.", [])
+            raise GateError(f"{eid} didn't pass the quality check, so it's under Needs your call.", [])
         if send_to_review:
             e.status, e.bucket, e.spot_check_selected = "needs_decision", "decision", False
             e.decision_reason = ""

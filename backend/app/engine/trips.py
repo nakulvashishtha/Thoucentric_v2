@@ -6,12 +6,12 @@ def check_trip(previous_trips: int, override: bool, override_reason: str | None,
                free: int = 2, max_with_override: int = 3) -> tuple[bool, str]:
     n = previous_trips + 1
     if n <= free:
-        return True, f"Trip {n} of {free}"
+        return True, f"Request {n} of {free}"
     if n <= max_with_override:
         if override and (override_reason or "").strip():
-            return True, f"Trip {n} (override: {override_reason.strip()})"
-        return False, f"Trip {n} needs the override tick and a written reason"
-    return False, f"Trip {n} is refused: at most {max_with_override} trips per idea"
+            return True, f"Request {n} (reason: {override_reason.strip()})"
+        return False, f"Request {n} needs the tick and a written reason"
+    return False, f"You can't send request {n}: the limit is {max_with_override} per idea"
 
 
 def sample_mix(sample: dict[str, float], target: dict[str, float], max_diff_points: float) -> dict:

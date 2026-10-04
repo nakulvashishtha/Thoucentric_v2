@@ -70,3 +70,59 @@ def test_privacy_and_coverage_in_sample_1(client):
     # rejected and pending items stay visible
     assert any(e["status"] == "rejected" and e["decision_reason"] == "No method shown" for e in b["evidence"])
     assert any(e["status"] == "pending" for e in b["evidence"])
+
+
+def _wait_job(client, cid, kind, timeout=60):
+    import time
+    t0 = time.time()
+    while time.time() - t0 < timeout:
+        j = client.get(f"/api/cases/{cid}").json()["jobs"].get(kind)
+        if j and j["status"] in ("done", "failed"):
+            assert j["status"] == "done", j["error"]
+            return
+        time.sleep(0.05)
+    raise AssertionError("timed out")
+
+
+def test_skip_to_step_replays_through_the_gates_and_never_writes_the_conclusion(client):
+    cid = client.post(f"/api/samples/{S1}/load").json()["id"]
+    assert client.post(f"/api/cases/{cid}/sample/advance?to=7").status_code == 200
+    _wait_job(client, cid, "advance")
+    b = client.get(f"/api/cases/{cid}").json()
+    assert b["progress"]["current"] == 7 and b["review"]["decided"] == 0     # stops before the review
+    assert client.post(f"/api/cases/{cid}/sample/advance?to=3").status_code == 409   # never goes back
+    assert client.post(f"/api/cases/{cid}/sample/advance?to=12").status_code == 200
+    _wait_job(client, cid, "advance")
+    b = client.get(f"/api/cases/{cid}").json()
+    assert b["progress"]["current"] == 12 and b["overall"]["result"] == "not_achievable"
+    assert b["conclusion"] is None                                             # the tool never writes it
+    v = {h["code"]: (h["verdict"]["result"], h["verdict"]["confidence"]) for h in b["hypotheses"] if h["verdict"]}
+    assert v["H2"] == ("holds", "medium")
+    assert client.get(f"/api/cases/{cid}/unknowns").json()
+    acts = client.get(f"/api/cases/{cid}/activity").json()
+    assert any(a["event_type"] == "skip_to_step" for a in acts)
+    csv_text = client.get(f"/api/cases/{cid}/activity?format=csv").text
+    assert csv_text.startswith("id,time,actor,step,event,message")
+
+
+def test_skip_to_step_is_refused_for_a_blank_case(client):
+    cid = client.post("/api/cases", json={"client_name": "A"}).json()["id"]
+    assert client.post(f"/api/cases/{cid}/sample/advance?to=5").status_code == 400
+
+
+def test_json_export_imports_as_a_new_case(client):
+    r = Runner(client, S1)
+    r.run_to_tests()
+    r.run_trips()
+    r.finish()
+    import json
+    exported = json.dumps(r.call("GET", "/export?format=json"))
+    res = client.post("/api/cases/import", files={"file": ("case.json", exported.encode())})
+    assert res.status_code == 200, res.text
+    new = client.get(f"/api/cases/{res.json()['id']}").json()
+    old = r.case()
+    assert new["counts"] == old["counts"] and new["overall"]["result"] == old["overall"]["result"]
+    assert [h["verdict"]["result"] for h in new["hypotheses"] if h["verdict"]] == \
+        [h["verdict"]["result"] for h in old["hypotheses"] if h["verdict"]]
+    assert new["conclusion"]["text"] == old["conclusion"]["text"]
+    assert client.post("/api/cases/import", files={"file": ("x.json", b"{}")}).status_code == 400

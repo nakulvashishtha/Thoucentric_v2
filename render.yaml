@@ -1,0 +1,30 @@
+# Render blueprint: one web service from the Dockerfile. Keys are entered in the dashboard, never committed.
+services:
+  - type: web
+    name: research-workbench
+    runtime: docker
+    plan: free                      # switch to the cheapest paid plan only for pitch week (it never sleeps)
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false                 # Render asks for the value when you create the service
+      - key: TAVILY_API_KEY
+        sync: false
+      - key: ADMIN_PASSCODE
+        sync: false
+      - key: MODEL_FAST
+        value: claude-haiku-4-5
+      - key: MODEL_SMART
+        value: claude-sonnet-5-5
+      - key: MODE
+        value: live
+      - key: DAILY_SPEND_CAP
+        value: "5"
+      - key: MAX_LLM_CALLS_PER_CASE
+        value: "150"
+      - key: MAX_SEARCH_CREDITS_PER_CASE
+        value: "40"
+      - key: DATA_DIR
+        value: /app/data

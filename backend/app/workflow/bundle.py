@@ -11,6 +11,7 @@ from ..engine import credibility, verdict as V
 from ..engine.verdict import with_unit
 from ..settings import effective_mode, rules
 from ..state_machine import review_status, step_status
+from .gather import item_needs_formula_confirmation
 from . import common as C
 
 STATUS_LABELS = {
@@ -70,6 +71,7 @@ def build(case_id: int) -> dict:
         d["claim"] = _claim(e)
         d["text"] = e.text[:4000]
         d["copies"] = [x.id for x in items if x.duplicate_of == e.id]
+        d["formula_needs_you"] = item_needs_formula_confirmation(e.figures_json)
         ev.append(d)
     hyps = []
     for h in hs_all:

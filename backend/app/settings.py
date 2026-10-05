@@ -49,7 +49,7 @@ def requested_mode() -> str:
     return m if m in ("live", "fixtures") else "live"
 
 
-APP_SETTINGS_DEFAULTS = {"mode": "", "fast_demo": True, "larger_text": False}
+APP_SETTINGS_DEFAULTS = {"mode": "", "fast_demo": True, "larger_text": False, "double_check": True}
 
 
 def app_settings() -> dict:

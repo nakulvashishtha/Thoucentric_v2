@@ -3,7 +3,7 @@ import { api } from "../api/client";
 import type { Evidence, Figure } from "../api/types";
 import * as T from "../copy";
 import { evidenceById, useCtx } from "../state";
-import { Details, Dialog, Drawer, Icon, IdChip, Menu, Origin, Quality, StatusPill, fmtNum, withUnit } from "./ui";
+import { Details, Drawer, Icon, IdChip, Menu, Origin, Quality, StatusPill, fmtNum, withUnit } from "./ui";
 
 export function figureText(f: Figure): string {
   if (f.value != null) return withUnit(f.value, f.unit);
@@ -49,7 +49,8 @@ function Figures({ e }: { e: Evidence }) {
   );
 }
 
-function Calculation({ e, confirmed, onConfirm, canConfirm }: { e: Evidence; confirmed: boolean; onConfirm: () => void; canConfirm: boolean }) {
+// The app works the figure out; accepting the item checks the formula. No separate confirm step.
+function Calculation({ e }: { e: Evidence }) {
   const calc = (e.figures_json || []).filter((f) => f.kind === "calculated" && f.derivation);
   if (!calc.length) return null;
   return (
@@ -58,14 +59,15 @@ function Calculation({ e, confirmed, onConfirm, canConfirm }: { e: Evidence; con
       {calc.map((f, i) => {
         const d = f.derivation!;
         const inputs = d.input_figure_refs.map((r) => e.figures_json[r]).filter(Boolean);
-        const done = confirmed || d.formula_confirmed;
+        const done = d.formula_confirmed;
         return (
           <div key={i} className="stack-sm">
             <div className="formula">{d.formula}</div>
             <div className="small muted">{T.step7.formulaInputs}: {inputs.map((x) => `${figureText(x)}${x.locator ? ` (${x.locator})` : ""}`).join(" · ")}</div>
             {!d.unit_ok || d.years_ok === false ? <div className="pill amber"><Icon name="warn" />{T.step7.formulaUnitCheck}</div> : null}
-            {done ? <span className="pill green"><Icon name="tick" />{T.step7.formulaConfirmed}</span> :
-              canConfirm ? <button type="button" className="btn small" onClick={onConfirm}>{T.buttons.confirmFormula}</button> : null}
+            {done ? <span className="pill green"><Icon name="tick" />{T.step7.formulaConfirmed}</span>
+              : e.formula_needs_you ? <div className="pill amber"><Icon name="warn" />{T.step7.formulaNeedsYou}</div>
+                : <div className="small muted">{T.step7.formulaAuto}</div>}
           </div>
         );
       })}
@@ -136,16 +138,16 @@ export function EvidenceRow({ e, decide = false, linksEditable = false, startOpe
   const { cid, act, openEvidence, readOnly, b } = useCtx();
   const [open, setOpen] = useState(startOpen);
   const [rejecting, setRejecting] = useState(false);
+  const [other, setOther] = useState(false);
   const [reason, setReason] = useState("");
-  const [confirmed, setConfirmed] = useState(false);
-  const needsFormula = (e.figures_json || []).some((f) => f.kind === "calculated" && !f.derivation?.formula_confirmed);
+  const confirm = !!e.formula_needs_you;
   const failing = (e.checklist_json || []).filter((c) => !c.pass).map((c) => c.test);
   const canDecide = decide && !readOnly && e.status === "needs_decision";
   const send = (action: string, why = "") => act(() => api("POST", `/cases/${cid}/evidence/${e.id}/decision`,
-    { action, reason: why, confirm_formula: confirmed }));
+    { action, reason: why, confirm_formula: confirm && (action === "approve" || action === "keep_client_reported") }));
   const accept = [
-    { label: T.buttons.accept, onClick: () => send("approve") },
-    { label: T.buttons.acceptClient, onClick: () => send("keep_client_reported") },
+    { label: confirm ? T.buttons.acceptConfirmFormula : T.buttons.accept, onClick: () => send("approve") },
+    { label: confirm ? T.step7.acceptClientFormula : T.buttons.acceptClient, onClick: () => send("keep_client_reported") },
     { label: T.buttons.useClaim, onClick: () => send("keep_belief") },
     { label: T.buttons.useSenseCheck, onClick: () => send("keep_cross_check") },
   ];
@@ -158,7 +160,8 @@ export function EvidenceRow({ e, decide = false, linksEditable = false, startOpe
         <div className="ev-claim">
           <div className="t1">{e.claim || e.title}</div>
           <div className="t2"><SourceLine e={e} />{ideaCodes.length ? <span> · {ideaCodes.join(", ")}</span> : null}
-            {canDecide && failing.length ? <span> · {failing[0]}</span> : null}</div>
+            {canDecide && failing.length ? <span> · {failing[0]}</span> : null}
+            {e.status === "rejected" && e.decision_reason ? <span> · {e.decision_reason}</span> : null}</div>
         </div>
         <Quality tier={e.tier} />
         <StatusPill status={e.status} duplicateOf={e.duplicate_of} />
@@ -170,11 +173,32 @@ export function EvidenceRow({ e, decide = false, linksEditable = false, startOpe
           <Figures e={e} />
           {e.decision_reason ? <p className="small">{T.evidence.decidedReason(e.decision_reason)}</p> : null}
           {e.copies?.length ? <p className="small muted">{T.step7.copiesOf(e.copies.join(", "))}</p> : null}
-          <Calculation e={e} confirmed={confirmed} canConfirm={canDecide} onConfirm={() => setConfirmed(true)} />
+          <Calculation e={e} />
           {canDecide ? (
             <div className="decide-bar">
-              <Menu label={T.buttons.acceptMenu} items={accept} disabled={needsFormula && !confirmed} />
-              <button type="button" className="btn small" onClick={() => setRejecting(true)}>{T.buttons.reject}</button>
+              <Menu label={T.buttons.acceptMenu} items={accept} />
+              <button type="button" className={`btn small${rejecting ? " active" : ""}`} aria-expanded={rejecting}
+                onClick={() => { setRejecting(!rejecting); setOther(false); }}>{T.buttons.reject}</button>
+            </div>
+          ) : null}
+          {canDecide && rejecting ? (
+            <div className="reject-reasons">
+              <p className="label">{T.step7.rejectReason}</p>
+              <div className="row wrap">
+                {T.step7.rejectReasons.map((r) => (
+                  <button key={r} type="button" className="btn small" onClick={() => { setRejecting(false); void send("reject", r); }}>{r}</button>
+                ))}
+                <button type="button" className={`btn small${other ? " active" : ""}`} onClick={() => setOther(true)}>{T.step7.rejectOther}</button>
+              </div>
+              {other ? (
+                <div className="row" style={{ marginTop: 8 }}>
+                  <input type="text" value={reason} autoFocus placeholder={T.step7.rejectHint} aria-label={T.step7.rejectHint}
+                    onChange={(ev) => setReason(ev.target.value)} />
+                  <button type="button" className="btn small" onClick={() => {
+                    setRejecting(false); void send("reject", reason.trim() ? `${T.step7.rejectOther}: ${reason.trim()}` : T.step7.rejectOther);
+                  }}>{T.buttons.reject}</button>
+                </div>
+              ) : null}
             </div>
           ) : null}
           <Details inline title={T.app.details}>
@@ -187,15 +211,6 @@ export function EvidenceRow({ e, decide = false, linksEditable = false, startOpe
             </div>
           </Details>
         </div>
-      ) : null}
-      {rejecting ? (
-        <Dialog text={T.step7.rejectReason} confirmLabel={T.buttons.reject} onCancel={() => setRejecting(false)}
-          onConfirm={() => { if (!reason.trim()) return; setRejecting(false); void send("reject", reason.trim()); }}>
-          <label className="field" style={{ marginBottom: 16 }}>
-            <span className="hint">{T.step7.rejectHint}</span>
-            <input type="text" value={reason} autoFocus onChange={(ev) => setReason(ev.target.value)} aria-label={T.step7.rejectReason} />
-          </label>
-        </Dialog>
       ) : null}
     </div>
   );

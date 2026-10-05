@@ -41,7 +41,8 @@ def _decide_by_rules(case_id: int, e: EvidenceItem, rules: list[dict], confirm: 
     has_calc = any(f.get("kind") == "calculated" for f in e.figures_json or [])
     for rule in rules:
         if _matches(e, rule["match"]):
-            gather.decide(case_id, e.id, rule["action"], rule.get("reason", ""), bool(confirm and has_calc))
+            needs = confirm and has_calc and gather.item_needs_formula_confirmation(e.figures_json)
+            gather.decide(case_id, e.id, rule["action"], rule.get("reason", ""), bool(needs))
             return
 
 
@@ -79,7 +80,8 @@ async def _trips(case_id: int, name: str, script: dict) -> None:
         await _wait(case_id, f"trip_reply_{tid}")
         for e in _items(case_id):
             if e.bucket == "trip" and e.status == "needs_decision":
-                gather.decide(case_id, e.id, t["decide"], "", bool(t.get("confirm_formula")))
+                needs = bool(t.get("confirm_formula")) and gather.item_needs_formula_confirmation(e.figures_json)
+                gather.decide(case_id, e.id, t["decide"], "", needs)
         results.run_tests(case_id, t["idea"])
 
 

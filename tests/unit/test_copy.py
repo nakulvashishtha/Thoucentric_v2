@@ -13,7 +13,8 @@ BANNED = ["rule engine", "llm", "language model", "schema", "fixture", "spans?",
 VERBS = {"start", "try", "import", "open", "delete", "continue", "cancel", "confirm", "lock", "mark", "run", "reset",
          "remove", "restore", "add", "save", "copy", "download", "edit", "stop", "review", "view", "move", "accept",
          "use", "reject", "fill", "draft", "skip", "test", "stress-test", "write", "print", "export", "check"}
-EXEMPT_BUTTONS = {"Matches", "Doesn't match", "Copied"}   # answers to a check and a short confirmation
+EXEMPT_BUTTONS = {"Matches", "Doesn't match", "Copied",   # answers to a check and a short confirmation
+                  "Use this as the new target"}          # wording chosen by the user after their test
 NEXT_STEP = re.compile(r"\b(try|check|add|refresh|use|choose|download|open|press|switch|select)\b", re.I)
 
 

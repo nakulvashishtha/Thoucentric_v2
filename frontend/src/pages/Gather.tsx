@@ -378,10 +378,10 @@ export function Step7() {
   const waiting = main.filter((e) => e.status === "pending");
   const [openRow, setOpenRow] = useState("");
   const locked = readOnly || !!b.progress.done["7"];
-  const spotSkipped = rv.spot_total === 0;
+  const showSpot = rv.double_check !== false && picks.length > 0;   // optional: never holds up the tests
   const status = rv.decided < rv.decision_total ? T.step7.status.decide(rv.decision_total - rv.decided)
     : rv.auto_seen < rv.auto_total ? T.step7.status.seen(rv.auto_total - rv.auto_seen)
-      : rv.spot_done < rv.spot_total ? T.step7.status.spot : !rv.sources_box ? T.step7.status.box : T.step7.status.ready;
+      : !rv.sources_box ? T.step7.status.box : T.step7.status.ready;
   const ready = status === T.step7.status.ready;
   const chip = (ok: boolean, text: string) => <span className={`progress-chip${ok ? " ok" : ""}`}><Icon name={ok ? "tick" : "clock"} />{text}</span>;
   return (
@@ -390,7 +390,6 @@ export function Step7() {
       <div className="chips">
         {chip(rv.decided >= rv.decision_total, T.step7.chipDecide(rv.decided, rv.decision_total))}
         {chip(rv.auto_seen >= rv.auto_total, T.step7.chipSeen(rv.auto_seen, rv.auto_total))}
-        {chip(rv.spot_done >= rv.spot_total, T.step7.chipSpot(rv.spot_done >= rv.spot_total, spotSkipped))}
       </div>
       <div className="card" style={{ padding: "16px 16px 8px" }}>
         <h2 style={{ paddingLeft: 4 }}>{T.step7.needsCall(decision.length)}</h2>
@@ -410,33 +409,35 @@ export function Step7() {
           </table>
         )}
         <div className="section" style={{ padding: "0 4px 8px" }}>
-          <p className="label">{T.step7.spotTitle} <Tip text={T.tips.spot} /></p>
-          {spotSkipped ? <p className="small muted">{T.step7.spotSkipped}</p> : (
-            <>
-              <p className="small muted" style={{ marginTop: 0 }}>{T.step7.spotHint}</p>
-              {picks.map((e) => (
-                <div key={e.id} className="spread" style={{ padding: "6px 0" }}>
-                  <span className="row"><IdChip id={e.id} onOpen={openEvidence} /><span className="ellipsis">{e.claim}</span></span>
-                  <span className="row">
-                    <button type="button" className="btn small" onClick={() => openEvidence(e.id)}>{T.buttons.openSource}</button>
-                    {e.spot_check_result ? (e.spot_check_result === "matches" ? <Pill tone="green" icon="tick">{T.buttons.matches}</Pill>
-                      : <Pill tone="amber" icon="warn">{T.step7.movedToCall}</Pill>) : (
-                      <>
-                        <button type="button" className="btn small" disabled={locked} onClick={() => act(() => api("POST", `/cases/${cid}/review/spot-check/${e.id}`, { matches: true }))}>{T.buttons.matches}</button>
-                        <button type="button" className="btn small" disabled={locked} onClick={() => act(() => api("POST", `/cases/${cid}/review/spot-check/${e.id}`, { matches: false }))}>{T.buttons.doesntMatch}</button>
-                      </>
-                    )}
-                  </span>
-                </div>
-              ))}
-            </>
-          )}
           <label className="tickbox check">
             <input type="checkbox" checked={!!rv.sources_box} disabled={locked}
               onChange={(e) => act(() => api("POST", `/cases/${cid}/review/confirm-sources`, { ticked: e.target.checked }))} />{T.step7.checkedSources}
           </label>
         </div>
       </div>
+      {showSpot ? (
+        <div className="card" style={{ padding: "16px 20px" }}>
+          <div className="row"><h2 style={{ margin: 0 }}>{T.step7.spotTitle}</h2><Pill tone="grey">{T.step7.spotOptional}</Pill><Tip text={T.tips.spot} /></div>
+          <p className="small muted">{T.step7.spotHint}</p>
+          {picks.map((e) => (
+            <div key={e.id} className="spread" style={{ padding: "6px 0" }}>
+              <span className="row"><IdChip id={e.id} onOpen={openEvidence} /><span className="ellipsis">{e.claim}</span></span>
+              <span className="row">
+                <button type="button" className="btn small" onClick={() => openEvidence(e.id)}>{T.buttons.openSource}</button>
+                {e.spot_check_result === "matches" ? <Pill tone="green" icon="tick">{T.buttons.matches}</Pill>
+                  : e.spot_check_result === "skipped" ? <Pill tone="grey">{T.step7.spotSkippedByYou}</Pill>
+                    : e.spot_check_result ? <Pill tone="amber" icon="warn">{T.step7.movedToCall}</Pill> : (
+                      <>
+                        <button type="button" className="btn small" disabled={locked} onClick={() => act(() => api("POST", `/cases/${cid}/review/spot-check/${e.id}`, { matches: true }))}>{T.buttons.matches}</button>
+                        <button type="button" className="btn small" disabled={locked} onClick={() => act(() => api("POST", `/cases/${cid}/review/spot-check/${e.id}`, { matches: false }))}>{T.buttons.doesntMatch}</button>
+                        <button type="button" className="linkbtn small" disabled={locked} onClick={() => act(() => api("POST", `/cases/${cid}/review/spot-check/${e.id}`, { skip: true }))}>{T.buttons.skipCheck}</button>
+                      </>
+                    )}
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : null}
       <div className="section">
         <Details title={T.step7.closedSection(reference.length, rejected.length, waiting.length)}>
           {reference.length ? <><p className="label">{T.step7.targetSources}</p>{reference.map((e) => <EvidenceRow key={e.id} e={e} />)}</> : null}

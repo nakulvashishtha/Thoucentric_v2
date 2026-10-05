@@ -14,9 +14,9 @@ minimum_sources:
   market: 2
   client_operational: 1
 
-spot_check:
-  fraction: 0.20
-  minimum: 2
+spot_check:            # one auto-passed source, optional (it never blocks the tests)
+  fraction: 0
+  minimum: 1
 
 trips:
   free: 2

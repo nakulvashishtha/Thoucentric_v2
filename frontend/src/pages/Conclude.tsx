@@ -3,7 +3,7 @@ import { api, upload } from "../api/client";
 import type { Hypothesis, Trip } from "../api/types";
 import * as T from "../copy";
 import { Footer, PageHead, useCtx } from "../state";
-import { Confidence, Details, Empty, Icon, IdChip, Origin, Pill, Progress, ResultPill, Skeleton, download, downloadText, fmtDate, fmtNum, useElapsed, withUnit } from "../components/ui";
+import { Confidence, Details, Dialog, Empty, Icon, IdChip, Origin, Pill, Progress, ResultPill, Skeleton, download, downloadText, fmtDate, fmtNum, useElapsed, withUnit } from "../components/ui";
 import { EvidenceRow } from "../components/Evidence";
 import { CardData, Reasoning, ResultCard, cardFromHypothesis } from "../components/Results";
 
@@ -304,8 +304,9 @@ interface WhatIfRow { code: string; text: string; must_have: boolean; unit: stri
   result: string; confidence: string; why: string; evidence_ids: string[]; changed: boolean }
 
 export function Step11() {
-  const { b, cid, go, openEvidence } = useCtx();
+  const { b, cid, go, act, openEvidence } = useCtx();
   const sliders = b.sliders;
+  const [asking, setAsking] = useState<{ kind: string; key: string; value: number; target: string } | null>(null);
   const base = useMemo(() => Object.fromEntries(sliders.map((s) => [`${s.kind}:${s.key}`, s.value])), [sliders]);
   const [vals, setVals] = useState<Record<string, number>>(base);
   const [res, setRes] = useState<{ ideas: WhatIfRow[]; overall: string; overall_changed: boolean } | null>(null);
@@ -361,10 +362,25 @@ export function Step11() {
               </div>
               <input id={k} type="range" min={s.min} max={s.max} step={step} value={v} onChange={(e) => setVals({ ...vals, [k]: Number(e.target.value) })} />
               <div className="spread small muted"><span>{fmtNum(s.min)}</span><span>{fmtNum(s.max)}</span></div>
+              {d !== 0 ? (
+                <button type="button" className="btn small" style={{ marginTop: 6 }} onClick={() => {
+                  const idea = res?.ideas.find((r) => r.code === (s.kind === "pass_line" ? s.key : s.idea));
+                  const line = s.kind === "pass_line" ? v : idea?.line ?? v;
+                  setAsking({ kind: s.kind, key: s.key, value: v, target: `${withUnit(line, hmap[s.kind === "pass_line" ? s.key : s.idea]?.measure_unit || s.unit)}` });
+                }}>{T.buttons.useAsTarget}</button>
+              ) : null}
             </div>
           );
         })}
       </div>
+      {asking ? (
+        <Dialog text={T.step11.confirmRetarget(asking.target)} onCancel={() => setAsking(null)} onConfirm={async () => {
+          const a = asking;
+          setAsking(null);
+          const ok = await act(() => api("POST", `/cases/${cid}/plan/retarget`, { kind: a.kind, key: a.key, value: a.value }));
+          if (ok) go(8);
+        }} />
+      ) : null}
       <div className="results" style={{ marginTop: 16 }}>{cards.map((c) => <ResultCard key={c.code} c={c} />)}</div>
       <div className="card" style={{ marginTop: 16 }}>
         <h2>{T.step11.stillUnknown}</h2>

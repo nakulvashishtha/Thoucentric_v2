@@ -18,7 +18,7 @@ export interface Evidence {
   credibility_json: any; checklist_json: CheckTest[]; figures_json: Figure[]; status: string; bucket: string;
   decided_by: string; decision_reason: string; seen_by_consultant: boolean; spot_check_selected: boolean;
   spot_check_result: string; trip_id: number | null; links: Link[]; status_label: string; tier: number | null;
-  tier_label: string; date: string; claim: string; copies: string[]; file_id: number | null;
+  tier_label: string; date: string; claim: string; copies: string[]; file_id: number | null; formula_needs_you: boolean;
 }
 export interface Verdict { hypothesis_code: string; result: string; confidence: string; reason_codes: string[];
   evidence_ids: string[]; why: string; version: number; detail_json: any }

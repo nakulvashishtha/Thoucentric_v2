@@ -225,7 +225,7 @@ def seen(cid: int, eid: str, body: Optional[dict] = None):
 
 @router.post("/cases/{cid}/review/spot-check/{eid}")
 def spot(cid: int, eid: str, body: dict):
-    gather.spot_check(cid, eid, bool(body.get("matches")))
+    gather.spot_check(cid, eid, bool(body.get("matches")), bool(body.get("skip")))
     return ok()
 
 
@@ -300,6 +300,11 @@ def addup(cid: int):
 @router.post("/cases/{cid}/whatif")
 def whatif(cid: int, body: dict):
     return results.what_if(cid, body.get("assumptions") or {}, body.get("pass_lines") or {})
+
+
+@router.post("/cases/{cid}/plan/retarget")
+def retarget(cid: int, body: dict):
+    return ok(job=jv(results.retarget(cid, body.get("kind", ""), body.get("key", ""), body.get("value"))))
 
 
 @router.put("/cases/{cid}/conclusion")
@@ -412,7 +417,10 @@ def sample_reply(name: str, filename: str):
 
 @router.put("/settings")
 def put_settings(body: dict):
-    save_app_settings(body)
+    before = app_settings().get("double_check", True)
+    after = save_app_settings(body).get("double_check", True)
+    if before != after:
+        gather.log_double_check_setting(after)
     return get_settings()
 
 

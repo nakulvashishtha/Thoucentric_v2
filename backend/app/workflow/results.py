@@ -10,7 +10,7 @@ from sqlmodel import select
 
 from .. import activity, jobs
 from ..db.models import (Activity, Case, ClientFile, Conclusion, EvidenceItem, EvidenceLink, EvidenceNeed, Overall,
-                         Summary, Trip, Verdict, now)
+                         RuleSet, Summary, Trip, Verdict, now)
 from ..db.session import session
 from ..engine import convert, privacy, trips as T, verdict as V, whatif
 from ..errors import BadInput, GateError, JobFailure
@@ -493,6 +493,84 @@ def what_if(case_id: int, assumptions: dict, pass_lines: dict) -> dict:
         ov = s.get(Overall, case_id)
     return {"ideas": rows, "overall": overall, "overall_label": OVERALL_LABELS[overall], "rule_applied": rule_text,
             "overall_changed": bool(ov and ov.result != overall), "locked_plan_unchanged": True}
+
+
+def retarget(case_id: int, kind: str, key: str, value) -> object:
+    """Use a stress-test value as a real target: reopen the plan, change the target, lock it again and re-run the
+    tests and the adding-up. Reviewed evidence is kept. Every step is in History."""
+    try:
+        value = float(value)
+    except (TypeError, ValueError):
+        raise BadInput("Choose a value with the slider first.")
+    with session() as s:
+        case = C.get_case(s, case_id)
+        require(s, case, "retarget")
+        row = next((r for r in sliders(s, case_id) if r["kind"] == kind and r["key"] == key), None)
+        if not row:
+            raise BadInput("That slider isn't available. Refresh the page and try again.")
+        if not row["min"] - 1e-9 <= value <= row["max"] + 1e-9:
+            raise BadInput("Keep the value inside the slider's range.")
+        if abs(value - row["value"]) < 1e-9:
+            raise BadInput("Move the slider first. This value is already your target.")
+        hs = C.hypotheses(s, case_id)
+        before = {h.code: C.pass_line(h) for h in hs}
+        t = now()
+        rs = s.get(RuleSet, case_id)
+        rs.locked_at = None
+        s.add(rs)
+        s.commit()
+        changes, extra = [], ""
+        for h in hs:
+            if kind == "pass_line" and h.code == key:
+                h.pass_line_formula, h.pass_line_value = None, value
+            elif kind == "assumption" and any(a["name"] == key for a in h.assumptions_json or []):
+                h.assumptions_json = [{**a, "value": value} if a["name"] == key else a for a in h.assumptions_json]
+                extra = f" ({row['label']}: {convert.fmt(row['value'])} to {convert.fmt(value)} {row['unit']})".replace(" )", ")")
+            else:
+                continue
+            after = C.pass_line(h)
+            if after is not None and before[h.code] is not None and abs(after - before[h.code]) > 1e-9:
+                changes.append((h.code, before[h.code], after, h.measure_unit))
+                h.pass_line_source_note = (h.pass_line_source_note + " " if h.pass_line_source_note else "") + \
+                    f"Changed from {convert.fmt(before[h.code])} to {convert.fmt(after)} after the stress test."
+            h.locked_at = t
+            s.add(h)
+        rs.locked_at = t
+        s.add(rs)
+        # results from step 8 onwards are cleared and run again (new verdict versions); evidence and decisions are kept
+        for model in (Overall, Summary):
+            old = s.get(model, case_id)
+            if old:
+                s.delete(old)
+        concl = s.get(Conclusion, case_id)
+        if concl and concl.saved_at:
+            concl.saved_at = None
+            s.add(concl)
+        case.status, case.current_step = "open", 8
+        s.add(case)
+        s.commit()
+        items = C.items_by_id(s, case_id)
+        links = C.links_for(s, case_id)
+        results = []
+        for h in hs:
+            line = C.pass_line(h)
+            r = C.evaluate(h, items, links, line)
+            _store_verdict(s, case_id, h, r, line)
+            results.append((h.code, r))
+        s.commit()
+    activity.log(case_id, "consultant", "plan_reopened", 3, "Reopened the targets at step 3 to use a stress-test value")
+    for code, a, b, unit in changes:
+        activity.log(case_id, "consultant", "target_changed", 3,
+                     f"Changed {code} target from {convert.fmt(a)} to {convert.fmt(b)} {unit} after the stress test{extra}",
+                     {"code": code, "from": a, "to": b, "slider": {"kind": kind, "key": key, "value": value}})
+    activity.log(case_id, "consultant", "plan_locked", 3, "Locked the targets again. Evidence you reviewed is kept.")
+    activity.log(case_id, "rule_engine", "results_cleared", 8, "Cleared the results from step 8 onwards to run them again")
+    for code, r in results:
+        activity.log(case_id, "rule_engine", "verdict", 8,
+                     f"{code}: {RESULT_LABELS[r.result]}" + (f", confidence {V.CONFIDENCE_LABELS[r.confidence]}"
+                                                             if r.confidence != "none" else "") + f". {r.why}",
+                     {"code": code, "result": r.result, "confidence": r.confidence})
+    return start_addup(case_id)
 
 
 # ------------------------------------------------------------------ step 12

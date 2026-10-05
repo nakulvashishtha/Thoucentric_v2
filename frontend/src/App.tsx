@@ -29,7 +29,7 @@ function useNarrow(): boolean {
   return n;
 }
 
-interface AppSettings { mode: string; notice: string; keys: Record<string, boolean>; app: { mode: string; fast_demo: boolean; larger_text: boolean };
+interface AppSettings { mode: string; notice: string; keys: Record<string, boolean>; app: { mode: string; fast_demo: boolean; larger_text: boolean; double_check: boolean };
   rules_yaml: string; registry_yaml: string; spend: Spend }
 
 function useSettings() {
@@ -463,6 +463,12 @@ function SettingsDrawer({ settings, b, act, onClose, onDeleted, onReset }: {
           <span className="field-label">{T.settings.largerText}</span>
           <span className="hint">{T.settings.largerTextHint}</span>
           <Toggle label={T.settings.largerText} value={!!s?.app.larger_text} onChange={(v) => settings.save({ larger_text: v })} />
+        </div>
+        <div>
+          <span className="field-label">{T.settings.doubleCheck}</span>
+          <span className="hint">{T.settings.doubleCheckHint}</span>
+          <Toggle label={T.settings.doubleCheck} value={s?.app.double_check !== false}
+            onChange={(v) => (act ? act(() => settings.save({ double_check: v })) : settings.save({ double_check: v }))} />
         </div>
         {b && act ? (
           <div>

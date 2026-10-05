@@ -5,6 +5,7 @@ from sqlmodel import Session, select
 
 from .db.models import Case, Conclusion, EvidenceItem, Frame, Overall, RuleSet, Summary, Trip
 from .errors import GateError
+from .settings import app_settings
 from .workflow.common import STEPS, hypotheses
 
 
@@ -22,6 +23,8 @@ def review_status(s: Session, case_id: int) -> dict:
         "decision_total": len(decision), "decided": len(decided),
         "spot_total": len(picks), "spot_done": len([e for e in picks if e.spot_check_result]),
         "sources_box": bool(st.get("sources_reviewed_at")),
+        # optional: the quick double-check never blocks the tests (user-test feedback)
+        "double_check": bool(app_settings().get("double_check", True)),
     }
     missing = []
     if out["decided"] < out["decision_total"]:
@@ -30,8 +33,6 @@ def review_status(s: Session, case_id: int) -> dict:
     if out["auto_seen"] < out["auto_total"]:
         n = out["auto_total"] - out["auto_seen"]
         missing.append(f"Look at {n} more source{'s' if n != 1 else ''}")
-    if out["spot_done"] < out["spot_total"]:
-        missing.append("Do the quick double-check")
     if not out["sources_box"]:
         missing.append("Tick \"I've checked these sources\"")
     out["missing"] = missing
@@ -150,6 +151,12 @@ def require(s: Session, case: Case, action: str) -> None:
              [f"Test {c} again" for c in status["reopened"]])
     elif action == "whatif":
         need(done[8], "Run the tests first.", ["Run tests"])
+    elif action == "retarget":
+        need(done[8], "Run the tests first.", ["Run tests"])
+        need(not status["reopened"], "Make a call on the new evidence and test the idea again first.",
+             [f"Test {c} again" for c in status["reopened"]])
+        need(not [t for t in s.exec(select(Trip).where(Trip.case_id == case.id)).all() if not t.marked_sent_at],
+             "Finish or mark as sent the open follow-up request first.", ["Fill the gaps"])
     elif action == "conclusion":
         need(done[10], "Add up the answer first.", ["Add it up"])
     else:

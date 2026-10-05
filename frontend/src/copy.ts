@@ -80,7 +80,7 @@ export const steps: Record<number, { title: string; instruction: string; primary
   7: {
     title: "Review the evidence",
     instruction:
-      "Check what we found before you run the tests. Start with the items that need your call. Then open each source that passed our quality check, mark it as seen, and do the quick double-check.",
+      "Check what we found before you run the tests. Start with the items that need your call. Then open each source that passed our quality check and mark it as seen. The quick double-check is optional.",
     primary: "Run tests",
   },
   8: {
@@ -151,7 +151,9 @@ export const buttons = {
   useClaim: "Use as client's claim",
   useSenseCheck: "Use as sense check",
   reject: "Reject",
-  confirmFormula: "Confirm formula",
+  acceptConfirmFormula: "Accept and confirm formula",
+  skipCheck: "Skip",
+  useAsTarget: "Use this as the new target",
   matches: "Matches",
   doesntMatch: "Doesn't match",
   saveLinks: "Save changes",
@@ -287,7 +289,7 @@ export const step3 = {
     recency: (a: number, b: number) =>
       `Sources must be dated within ${a} months for size, growth and price figures, or ${b} months for timing figures.`,
     spot: (pct: number, min: number) =>
-      `We pick ${pct}% of items that pass (at least ${min}) for a quick double-check.`,
+      `We pick ${min} ${min === 1 ? "item" : "items"} that passed for an optional quick double-check${pct ? ` (or ${pct}% if that's more)` : ""}.`,
     trips: (free: number, max: number) =>
       `You can go back to the client ${free} times per idea. A third time needs a reason. ${max} is the limit.`,
   },
@@ -400,8 +402,6 @@ export const step6 = {
 export const step7 = {
   chipDecide: (a: number, b: number) => `Needs your call ${a} of ${b}`,
   chipSeen: (a: number, b: number) => `Seen ${a} of ${b}`,
-  chipSpot: (done: boolean, skipped: boolean) =>
-    `Quick double-check ${skipped ? "not needed" : done ? "done" : "not done"}`,
   needsCall: (n: number) => `Needs your call (${n})`,
   passed: (n: number) => `Passed the quality check (${n})`,
   passedNone: "Nothing passed the quality check, so every item is under Needs your call.",
@@ -412,9 +412,11 @@ export const step7 = {
   colDate: "Date",
   colSeen: "Seen",
   spotTitle: "Quick double-check",
+  spotOptional: "Optional",
   movedToCall: "Doesn't match, so it's under Needs your call",
-  spotHint: "Open each picked source and check the figure matches what it says.",
+  spotHint: "One source that passed the quality check. Open it and check the figure matches what it says, or skip it. It doesn't hold up the tests.",
   spotSkipped: "Nothing passed the quality check, so there's nothing to double-check.",
+  spotSkippedByYou: "Skipped",
   checkedSources: "I've checked these sources",
   closedSection: (a: number, b: number, c: number) => `Target sources (${a}) · Rejected (${b}) · Waiting (${c})`,
   targetSources: "Target sources",
@@ -422,7 +424,9 @@ export const step7 = {
   waiting: "Waiting",
   why: "Why it needs your call",
   rejectReason: "Why reject it?",
-  rejectHint: "A short reason. It stays on record.",
+  rejectReasons: ["Not reliable", "Out of date", "Measures something different", "Duplicate", "Not relevant"],
+  rejectOther: "Other",
+  rejectHint: "Add a few words if you like. It stays on record.",
   checks: "Checks",
   checkTest: "Check",
   checkNeeds: "Needs",
@@ -438,7 +442,10 @@ export const step7 = {
   formula: "Calculation",
   formulaInputs: "Inputs",
   formulaUnitCheck: "The units don't line up as expected. Check the formula before you confirm it.",
-  formulaConfirmed: "Formula confirmed",
+  formulaAuto: "Calculated by the app from the two quoted figures.",
+  formulaNeedsYou: "This calculation combines figures from different sources or uses an assumption, so check it and use \"Accept and confirm formula\".",
+  acceptClientFormula: "Accept as client's data and confirm formula",
+  formulaConfirmed: "Formula checked",
   quote: "Source text",
   pass: "Passed",
   fail: "Didn't pass",
@@ -449,7 +456,6 @@ export const step7 = {
   status: {
     decide: (n: number) => `Decide ${n} more ${n === 1 ? "item" : "items"} first`,
     seen: (n: number) => `Look at ${n} more ${n === 1 ? "source" : "sources"} first`,
-    spot: "Do the quick double-check first",
     box: "Tick \"I've checked these sources\"",
     ready: "Ready to run the tests",
   },
@@ -531,7 +537,8 @@ export const step10 = {
 };
 
 export const step11 = {
-  lockedUnchanged: "Locked plan unchanged",
+  lockedUnchanged: "This is a what-if. Your plan doesn't change.",
+  confirmRetarget: (v: string) => `This reopens your plan at step 3 with a target of ${v}. Results from step 8 onwards will be cleared and run again. Evidence you've reviewed is kept.`,
   targetOf: (code: string) => `${code} target`,
   locked: (v: string) => `locked at ${v}`,
   delta: (d: string) => `${d} from the locked value`,
@@ -635,7 +642,7 @@ export const help = {
     { term: "Source quality", text: "Official, Trusted, Press or Unverified. Set by fixed rules, never by the AI." },
     { term: "From the client", text: "Data the client gave us. It can support an idea, but confidence stays at Fair at most." },
     { term: "Sense check only", text: "Evidence you keep for comparison. It never counts in a test." },
-    { term: "Quick double-check", text: "A few items that passed the quality check, picked at random for you to check by hand." },
+    { term: "Quick double-check", text: "One item that passed the quality check, picked at random for you to check by hand if you want. You can skip it or switch it off in Settings." },
   ],
 };
 
@@ -645,7 +652,7 @@ export const tips = {
   quality: "Official, Trusted, Press or Unverified, set by fixed rules from the website or source type.",
   closeCall: "Evidence within this margin of the target, or a range that includes it, counts as a close call. Confidence is then Weak.",
   senseCheck: "Kept for comparison only. It never counts towards a result.",
-  spot: "Items picked at random from those that passed. If one doesn't match its source, it moves to Needs your call.",
+  spot: "One item picked at random from those that passed. If it doesn't match its source, it moves to Needs your call.",
   separate: "Copies of the same original count once. Each separate source is a different original.",
 };
 
@@ -660,6 +667,8 @@ export const settings = {
   fastDemoHint: "Reads at most 4 sources per question, so gathering takes a minute or two.",
   largerText: "Larger text",
   largerTextHint: "Makes text bigger for projectors.",
+  doubleCheck: "Double-check one auto-passed source",
+  doubleCheckHint: "At step 7, shows one source that passed the quality check so you can compare it with the original. Optional.",
   aiReads: "AI reads client files",
   skip: "Skip to step",
   skipHint: "Replays this sample's recorded answers up to the chosen step. Every check still runs.",

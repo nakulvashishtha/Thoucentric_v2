@@ -70,15 +70,15 @@ class Runner:
             if self._matches(e, rule["match"]):
                 self.call("POST", f"/evidence/{e['id']}/decision",
                           json={"action": rule["action"], "reason": rule.get("reason", ""),
-                                "confirm_formula": bool(confirm and has_calc)})
+                                "confirm_formula": bool(confirm and has_calc and e["formula_needs_you"])})
                 return
         raise AssertionError(f"no script rule for {e['id']}")
 
-    def review(self) -> None:
+    def review(self, spot_check: bool = True) -> None:
         rv = self.script["review"]
         for e in self.case()["evidence"]:
             if e["bucket"] == "auto":
-                if e["spot_check_selected"]:
+                if spot_check and e["spot_check_selected"]:
                     self.call("POST", f"/review/spot-check/{e['id']}", json={"matches": rv["spot_check"] == "matches"})
                 if rv.get("mark_all_auto_approved_seen"):
                     self.call("POST", f"/review/seen/{e['id']}")
@@ -99,7 +99,8 @@ class Runner:
             for e in self.case()["evidence"]:
                 if e["bucket"] == "trip" and e["status"] == "needs_decision":
                     self.call("POST", f"/evidence/{e['id']}/decision",
-                              json={"action": t["decide"], "confirm_formula": t.get("confirm_formula", False)})
+                              json={"action": t["decide"],
+                                    "confirm_formula": t.get("confirm_formula", False) and e["formula_needs_you"]})
             self.call("POST", "/test/run", json={"hypothesis": t["idea"]})
 
     def finish(self) -> None:

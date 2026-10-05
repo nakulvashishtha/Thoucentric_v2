@@ -13,7 +13,7 @@ from ..db.session import session
 from ..engine import checklist as CL, convert, credibility, dedup, privacy, spotcheck, verify
 from ..errors import BadInput, GateError, JobFailure
 from ..llm import interface as llm
-from ..settings import country_code, registry, rules
+from ..settings import app_settings, country_code, registry, rules
 from ..state_machine import require
 from . import common as C
 
@@ -596,8 +596,11 @@ def start_clean(case_id: int):
             case2.current_step = 7
             s.commit()
         activity.log(case_id, "rule_engine", "spot_check_picked", 6,
-                     f"Picked {len(picks)} of the {len(auto)} items that passed for a quick double-check: "
+                     f"Picked {len(picks)} of the {len(auto)} items that passed for an optional quick double-check: "
                      f"{', '.join(picks) or 'none'} (seed {seed})", {"seed": seed, "picks": picks})
+        if not app_settings().get("double_check", True):
+            activity.log(case_id, "consultant", "spot_check_off", 6,
+                         "The quick double-check is switched off in Settings, so it isn't shown")
 
     return jobs.start(case_id, "clean", job, step=6)
 
@@ -681,7 +684,7 @@ async def link_and_derive(case: Case, eid: str, hs: dict, needs: dict, step: int
     if calcs:
         activity.log(case.id, "rule_engine", "derived", step,
                      f"Worked out {len(calcs)} figure(s) for {eid}: "
-                     + "; ".join(c.formula_text for c in calcs) + ". You confirm the formula.")
+                     + "; ".join(c.formula_text for c in calcs) + ". It's checked when you accept the item.")
 
 
 def _grade_and_check(s, case: Case, e: EvidenceItem, hs: dict, links: list, frame, dl) -> None:
@@ -766,6 +769,23 @@ def _can_touch(s, case: Case, e: EvidenceItem, action: str) -> None:
     require(s, case, action)
 
 
+def formula_needs_you(figs: list[dict], f: dict) -> bool:
+    """A calculated figure needs an explicit confirmation unless it was worked out from verified quotes in the
+    same source, with no assumption and a clean unit check. Otherwise accepting it is enough to check it."""
+    d = f.get("derivation") or {}
+    inputs = [figs[i] for i in d.get("input_figure_refs", []) if i < len(figs)]
+    sources = {x.get("source") or "" for x in inputs}
+    return not (f.get("verified") and inputs and all(x.get("verified") and x.get("kind") != "calculated" for x in inputs)
+                and len(sources) == 1 and not d.get("assumptions") and d.get("unit_ok", True)
+                and d.get("years_ok") is not False)
+
+
+def item_needs_formula_confirmation(figures: list[dict]) -> bool:
+    figs = figures or []
+    return any(f.get("kind") == "calculated" and not (f.get("derivation") or {}).get("formula_confirmed")
+               and formula_needs_you(figs, f) for f in figs)
+
+
 def decide(case_id: int, eid: str, action: str, reason: str = "", confirm_formula: bool = False) -> None:
     if action not in DECISIONS:
         raise BadInput("That choice isn't available. Refresh the page and try again.")
@@ -778,18 +798,17 @@ def decide(case_id: int, eid: str, action: str, reason: str = "", confirm_formul
         if action == "reject" and not reason.strip():
             raise GateError("Add a short reason for rejecting it.", ["reason"])
         figs = [dict(f) for f in e.figures_json or []]
-        derived = [f for f in figs if f.get("kind") == "calculated"]
-        if confirm_formula:
+        derived = [f for f in figs if f.get("kind") == "calculated" and not f["derivation"].get("formula_confirmed")]
+        formula_note = ""
+        if action in ("approve", "keep_client_reported") and derived:
+            used = [f for f in derived if _figure_used(s, case_id, eid, figs.index(f))]
+            if any(formula_needs_you(figs, f) for f in used) and not confirm_formula:
+                raise GateError(f"Use \"Accept and confirm formula\" for {eid}: its calculation combines figures "
+                                "from different sources or uses an assumption.", ["Accept and confirm formula"])
+            formula_note = " (formula confirmed by you)" if confirm_formula else " (formula checked)"
             for f in derived:
                 f["derivation"] = {**f["derivation"], "formula_confirmed": True}
             e.figures_json = figs
-            activity.log(case_id, "consultant", "formula_confirmed", 7 if not e.trip_id else 9,
-                         f"Confirmed the formula for {eid}: " +
-                         "; ".join(f["derivation"]["formula"] for f in derived))
-        if action in ("approve", "keep_client_reported") and any(
-                not f["derivation"].get("formula_confirmed") for f in derived
-                if _figure_used(s, case_id, eid, figs.index(f))):
-            raise GateError(f"Confirm the formula for {eid} before you accept it.", ["Confirm the formula"])
         if action == "keep_cross_check":
             for ln in s.exec(select(EvidenceLink).where(EvidenceLink.case_id == case_id,
                                                         EvidenceLink.evidence_id == eid)).all():
@@ -811,8 +830,9 @@ def decide(case_id: int, eid: str, action: str, reason: str = "", confirm_formul
              "keep_belief": "Kept as the client's claim:", "keep_cross_check": "Kept as a sense check only:",
              "reject": "Rejected"}[action]
     activity.log(case_id, "consultant", "decision", 9 if e.trip_id else 7,
-                 f"{label} {eid}" + (f": {reason.strip()}" if reason.strip() else ""),
-                 {"evidence_id": eid, "action": action})
+                 f"{label} {eid}{formula_note}" + (f": {reason.strip()}" if reason.strip() else ""),
+                 {"evidence_id": eid, "action": action,
+                  "formulas": [f["derivation"]["formula"] for f in derived] if formula_note else []})
 
 
 def _figure_used(s, case_id: int, eid: str, idx: int) -> bool:
@@ -862,13 +882,19 @@ def mark_seen(case_id: int, eid: str, send_to_review: bool = False) -> None:
                  f"Looked at the source of {eid}")
 
 
-def spot_check(case_id: int, eid: str, matches: bool) -> None:
+def spot_check(case_id: int, eid: str, matches: bool, skip: bool = False) -> None:
     with session() as s:
         case = C.get_case(s, case_id)
         require(s, case, "spot_check")
         e = _get(s, case_id, eid)
         if not e.spot_check_selected:
             raise GateError(f"{eid} wasn't picked for the quick double-check.", [])
+        if skip:
+            e.spot_check_result = "skipped"
+            s.add(e)
+            s.commit()
+            activity.log(case_id, "consultant", "spot_check_skipped", 7, f"Quick double-check skipped by you ({eid})")
+            return
         e.spot_check_result = "matches" if matches else "does_not_match"
         e.seen_by_consultant = True
         if not matches:
@@ -883,6 +909,17 @@ def spot_check(case_id: int, eid: str, matches: bool) -> None:
     activity.log(case_id, "consultant", "spot_check", 7,
                  f"Double-checked {eid}: " + ("it matches its source" if matches else
                                              "it doesn't match, so it moved to Needs your call"))
+
+
+def log_double_check_setting(on: bool) -> None:
+    """The setting is app-wide; record the change in every case that is still in its evidence review."""
+    with session() as s:
+        ids = [c.id for c in s.exec(select(Case)).all()
+               if (c.settings_json or {}).get("clean_finished_at") and not (c.settings_json or {}).get("tests_run_at")]
+    for cid in ids:
+        activity.log(cid, "consultant", "spot_check_on" if on else "spot_check_off", 7,
+                     "Switched the quick double-check on in Settings" if on else
+                     "Switched the quick double-check off in Settings")
 
 
 def confirm_sources(case_id: int, ticked: bool) -> None:

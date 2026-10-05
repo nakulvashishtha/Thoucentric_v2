@@ -1,6 +1,6 @@
 # Progress
 
-**Current:** Milestone B approved (tag milestone-B-approved). Next: checkpoint 6 after the user deploys and runs a live case.
+**Current:** Checkpoint 6 in progress: user-test fixes 1 to 4 built, waiting for the user's approval.
 
 | Checkpoint | Status |
 |---|---|
@@ -9,7 +9,7 @@
 | 3a + 3b All 12 screens, copy.ts + copy test, brief, exports, visual QA | Done (tag milestone-A-approved) |
 | 4 Live layer, caps, passcode, self-check, Sample 2 | Done (tag milestone-B-approved) |
 | 5 Dockerfile, render.yaml, .env.example, RUNBOOK, DEMO, pre-flight | Done (tag milestone-B-approved) |
-| 6 Fixes from live testing, Stage 3 extras | Not started (needs the user's live test) |
+| 6 Fixes from user testing, Stage 3 extras | In review: one-click accept with formula, set reject reasons, optional double-check (1 source, Settings switch), "Use this as the new target" on step 11 |
 
 **Decisions (defaults chosen where the prompt was silent)**
 - Approval is per milestone (user's instruction). Models default to claude-haiku-4-5 (fast) and claude-sonnet-5-5 (smart), set in env.
@@ -23,4 +23,4 @@
 **Known issues:** LINK_EVIDENCE runs once per item (not batched by 8); within the 150-call cap. Docker daemon was unavailable
 in the build sandbox, so the pre-flight ran the production server directly (clean install from pins, PORT, passcode, healthz).
 
-**Commands:** `make install && make build && make run` (app on :8000) · `make test` (105 tests) · deploy: RUNBOOK.md · demo: DEMO.md.
+**Commands:** `make install && make build && make run` (app on :8000) · `make test` (106 tests) · deploy: RUNBOOK.md · demo: DEMO.md.

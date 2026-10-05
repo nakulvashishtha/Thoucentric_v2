@@ -9,11 +9,11 @@
 4. **Set the targets.** Open H1: the benchmark was fetched before any evidence was read. Show **Critical**. Tick the box, **Lock targets**: the goalposts can't move.
 5. **Skip ahead:** Settings > **Skip to step** 7. Say: it replays the sample's answers through the same checks.
 6. **Plan the research** (stepper, step 4): the client request asks only for gaps; **Details** shows the client's name removed from every search.
-7. **Review the evidence.** The progress chips; one item opened: quote highlighted in its source, the calculation to confirm, every check with its threshold. The items that passed the quality check still show their source; the quick double-check keeps the check honest. **Run tests** stays locked until every call is made.
+7. **Review the evidence.** The progress chips; one item opened: quote highlighted in its source, the calculation to confirm, every check with its threshold. The items that passed the quality check still show their source; the optional quick double-check picks one to compare by hand. Accepting an item with a calculation checks its formula in the same click; Reject offers one-click reasons. **Run tests** stays locked until every call is made.
 8. **Results.** Point at the target-versus-evidence bar on H1: both separate sources sit below 20%. Not supported, Strong.
 9. **Fill the gaps.** Only H2 goes back, with a narrower question. **Use the sample reply**, accept it, **Test again**: Supported, Fair (client data caps confidence).
 10. **The answer.** Not achievable, because a critical idea failed. Every sentence cites its evidence; the rejected blog stays on record.
-11. **What if...** Move "Months needed to build" to 9: H4 flips. "Locked plan unchanged."
+11. **What if...** Move "Months needed to build" to 9: H4 flips. "This is a what-if. Your plan doesn't change." To make it real, **Use this as the new target**: the plan reopens, the tests run again and History records the change.
 12. **Your conclusion.** The box is empty. The tool never writes it. Show **Print or save PDF**.
 
 ## Part 2: one live case (about 10 minutes)

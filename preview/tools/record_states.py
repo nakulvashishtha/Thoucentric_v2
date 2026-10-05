@@ -99,9 +99,10 @@ def main() -> None:
                     ok = all(((e.get("credibility_json") or {}).get(k) if k == "matches_belief" else e.get(k)) == v
                              for k, v in m.items())
                     if ok:
-                        calc = any(f.get("kind") == "calculated" for f in e["figures_json"])
+                        # like the screen: accepting checks a simple formula; only a mixed one needs the confirmation
                         call("POST", f"/cases/{cid}/evidence/{e['id']}/decision",
-                             json={"action": rule["action"], "reason": rule.get("reason", ""), "confirm_formula": calc})
+                             json={"action": rule["action"], "reason": rule.get("reason", ""),
+                                   "confirm_formula": e["formula_needs_you"]})
                         break
         call("POST", f"/cases/{cid}/review/confirm-sources", json={"ticked": True})
         call("POST", f"/cases/{cid}/test/run"); snap("s8_tested")
@@ -115,7 +116,7 @@ def main() -> None:
         for e in call("GET", f"/cases/{cid}")["evidence"]:
             if e["bucket"] == "trip" and e["status"] == "needs_decision":
                 call("POST", f"/cases/{cid}/evidence/{e['id']}/decision",
-                     json={"action": t["decide"], "confirm_formula": True})
+                     json={"action": t["decide"], "confirm_formula": e["formula_needs_you"]})
         call("POST", f"/cases/{cid}/retest", json={"hypothesis": t["idea"]}); snap("s9_retested")
         call("POST", f"/cases/{cid}/addup/run"); wait("addup"); snap("s10_added")
         exports = {"md": call("GET", f"/cases/{cid}/export?format=md"),

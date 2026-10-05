@@ -64,11 +64,10 @@
     const r = { auto_total: auto.length, auto_seen: auto.filter((e) => e.seen_by_consultant).length,
       decision_total: dec.length, decided: dec.filter((e) => e.status !== "needs_decision").length,
       spot_total: picks.length, spot_done: picks.filter((e) => e.spot_check_result).length,
-      sources_box: !!(b.case.settings_json || {}).sources_reviewed_at };
+      sources_box: !!(b.case.settings_json || {}).sources_reviewed_at, double_check: appSettings.app.double_check !== false };
     const m = [];
     if (r.decided < r.decision_total) { const n = r.decision_total - r.decided; m.push(`Decide ${n} more item${n !== 1 ? "s" : ""}`); }
     if (r.auto_seen < r.auto_total) { const n = r.auto_total - r.auto_seen; m.push(`Look at ${n} more source${n !== 1 ? "s" : ""}`); }
-    if (r.spot_done < r.spot_total) m.push("Do the quick double-check");
     if (!r.sources_box) m.push("Tick \"I've checked these sources\"");
     r.missing = m; r.ready = !m.length;
     b.review = r;
@@ -182,6 +181,78 @@
       locked_plan_unchanged: true };
   }
 
+  // ------------------------------------------------------------------ stress test: make a slider value the real target
+  // Same steps as the server: reopen the plan, change the target, lock it again, re-test every idea in code (the
+  // ported verdict rules above), then add it up again. Evidence and decisions are kept.
+  const RESULT = { holds: "Supported", fails: "Not supported", conflicting: "Sources disagree", not_enough: "Not enough evidence" };
+  const CONF = { high: "Strong", medium: "Fair", low: "Weak" };
+  function sliderRange(v, h) {
+    if (h.slider_min != null && h.slider_max != null) return [h.slider_min, h.slider_max];
+    let lo = v === 0 ? -10 : Math.min(v * 0.5, v * 1.5), hi = v === 0 ? 10 : Math.max(v * 0.5, v * 1.5);
+    lo = Math.max(0, lo);
+    return [Math.round(lo * 1e4) / 1e4, Math.round(hi * 1e4) / 1e4];
+  }
+  function retarget(c, body) {
+    const b = c.b;
+    if (!b.progress.done["8"]) return err(409, "Run the tests first.", ["Run tests"]);
+    const row = b.sliders.find((s) => s.kind === body.kind && s.key === body.key);
+    const value = +body.value;
+    if (!row) return err(400, "That slider isn't available. Refresh the page and try again.");
+    if (!(value >= row.min - 1e-9 && value <= row.max + 1e-9)) return err(400, "Keep the value inside the slider's range.");
+    if (Math.abs(value - row.value) < 1e-9) return err(400, "Move the slider first. This value is already your target.");
+    const w = whatIf(b, body.kind === "assumption" ? { assumptions: { [body.key]: value } } : { pass_lines: { [body.key]: value } });
+    const extra = body.kind === "assumption" ? ` (${row.label}: ${fmt(row.value)} to ${fmt(value)} ${row.unit})` : "";
+    log(c, "consultant", 3, "Reopened the targets at step 3 to use a stress-test value");
+    for (const h of b.hypotheses.filter((x) => !x.removed_reason)) {
+      const r = w.ideas.find((x) => x.code === h.code);
+      if (body.kind === "pass_line" && h.code === body.key) { h.pass_line_formula = null; h.pass_line_value = value; }
+      if (body.kind === "assumption") h.assumptions_json = (h.assumptions_json || []).map((a) => (a.name === body.key ? Object.assign({}, a, { value }) : a));
+      if (Math.abs(r.line - h.line) > 1e-9) {
+        log(c, "consultant", 3, `Changed ${h.code} target from ${fmt(h.line)} to ${fmt(r.line)} ${h.measure_unit} after the stress test${extra}`);
+        h.pass_line_source_note = (h.pass_line_source_note ? h.pass_line_source_note + " " : "") + `Changed from ${fmt(h.line)} to ${fmt(r.line)} after the stress test.`;
+        h.line = r.line; h.line_text = withUnit(r.line, h.measure_unit);
+      }
+      const v = h.verdict;
+      h.verdict = Object.assign({}, v, { result: r.result, confidence: r.confidence, why: r.why, version: (v.version || 1) + 1,
+        detail_json: Object.assign({}, v.detail_json, { line: r.line, figures: (v.detail_json.figures || []).map((f) => {
+          const [side, boundary] = classify(f.low, f.high, r.line, h.comparator, h.tolerance_pct);
+          return Object.assign({}, f, { side, boundary, straddles: f.low !== f.high && f.low <= r.line && r.line <= f.high }); }) }),
+        computed_at: nowIso() });
+    }
+    log(c, "consultant", 3, "Locked the targets again. Evidence you reviewed is kept.");
+    log(c, "rule_engine", 8, "Cleared the results from step 8 onwards to run them again");
+    for (const r of w.ideas) log(c, "rule_engine", 8, `${r.code}: ${RESULT[r.result]}${r.confidence !== "none" ? ", confidence " + CONF[r.confidence] : ""}. ${r.why}`);
+    for (const s of b.sliders) {
+      const h = b.hypotheses.find((x) => x.code === s.idea);
+      if (s.kind === "pass_line") { s.value = h.line; [s.min, s.max] = sliderRange(h.line, h); }
+      else if (s.key === body.key) s.value = value;
+    }
+    // the adding-up runs again; the stored summary no longer matches every result, so a plain one is built from them
+    const changed = w.ideas.some((r) => r.changed);
+    const unknowns = (b.summary || {}).unknowns || [];
+    b.overall = null; b.summary = null;
+    if (b.conclusion) b.conclusion.saved_at = null;
+    b.progress.done["10"] = b.progress.done["11"] = b.progress.done["12"] = false;
+    for (const st of b.progress.steps) { st.current = st.n === 8; if (st.n >= 10) st.state = "open"; }
+    b.progress.current = 8;
+    b.jobs.addup = job("addup", "running", { progress: { label: "Writing the summary" } });
+    b.running_jobs = ["addup"];
+    log(c, "consultant", 10, "Asked for the answer to be added up");
+    timers.push(setTimeout(() => {
+      b.overall = { case_id: b.case.id, result: w.overall, label: w.overall_label, rule_applied: w.rule_applied, stale: false, computed_at: nowIso() };
+      const sentences = changed ? b.hypotheses.filter((h) => !h.removed_reason).map((h) => ({
+        text: `${h.code} (${h.measure_name}): ${RESULT[h.verdict.result]}${h.verdict.confidence !== "none" ? ", confidence " + CONF[h.verdict.confidence] : ""}. ${h.verdict.why}`,
+        evidence_ids: h.verdict.evidence_ids || [] })).filter((x) => x.evidence_ids.length) : S.s10_added.bundle.summary.sentences;
+      b.summary = { case_id: b.case.id, sentences, version: 2, source: changed ? "template" : "llm", unknowns };
+      b.jobs.addup = job("addup", "done"); b.running_jobs = [];
+      for (const st of b.progress.steps) { if (st.n === 10 || st.n === 11) st.state = "done"; st.current = st.n === 12; }
+      b.progress.done["10"] = b.progress.done["11"] = true; b.progress.current = 12;
+      log(c, "rule_engine", 10, `Added up the results using the locked rule: ${w.overall_label}. ${w.rule_applied}`);
+      log(c, "rule_engine", 10, changed ? "Built a plain summary from the results" : "Drafted the summary. Every sentence cites its evidence and passed the checks.");
+    }, 2400));
+    return ok({ job: b.jobs.addup });
+  }
+
   // ------------------------------------------------------------------ the fake /api
   const ok = (body) => ({ status: 200, body: body === undefined ? { ok: true } : body });
   const err = (status, reason, required) => ({ status, body: { reason, required: required || [] } });
@@ -198,7 +269,13 @@
     if (p === "/login") return body && body.passcode ? (signedIn = true, store.set("rw-preview-signed-in", "1"), ok()) : err(401, "That passcode isn't right. Check it and try again.");
     if (!signedIn) return err(401, "Enter the passcode to continue.");
     if (p === "/settings") {
-      if (method === "PUT") Object.assign(appSettings.app, body || {});
+      if (method === "PUT") {
+        const before = appSettings.app.double_check !== false;
+        Object.assign(appSettings.app, body || {});
+        const after = appSettings.app.double_check !== false;
+        if (before !== after) for (const c of Object.values(cases)) if (c.b.review && !c.b.progress.done["7"])
+          log(c, "consultant", 7, after ? "Switched the quick double-check on in Settings" : "Switched the quick double-check off in Settings");
+      }
       return ok(appSettings);
     }
     if (p === "/samples") return ok(M.samples);
@@ -275,16 +352,21 @@
     let mm;
     if ((mm = rest.match(/^\/evidence\/(E\d+)\/decision$/))) {
       const e = b.evidence.find((x) => x.id === mm[1]);
-      const calc = (e.figures_json || []).filter((f) => f.kind === "calculated");
-      if (body.confirm_formula) calc.forEach((f) => { f.derivation.formula_confirmed = true; });
+      const calc = (e.figures_json || []).filter((f) => f.kind === "calculated" && !f.derivation.formula_confirmed);
       if (body.action === "reject" && !(body.reason || "").trim()) return err(409, "Add a short reason for rejecting it.");
-      if ((body.action === "approve" || body.action === "keep_client_reported") && calc.some((f) => !f.derivation.formula_confirmed))
-        return err(409, `Confirm the formula for ${e.id} before you accept it.`);
+      let note = "";
+      if ((body.action === "approve" || body.action === "keep_client_reported") && calc.length) {
+        if (e.formula_needs_you && !body.confirm_formula)
+          return err(409, `Use "Accept and confirm formula" for ${e.id}: its calculation combines figures from different sources or uses an assumption.`);
+        note = body.confirm_formula ? " (formula confirmed by you)" : " (formula checked)";
+        calc.forEach((f) => { f.derivation.formula_confirmed = true; });
+        e.formula_needs_you = false;
+      }
       e.status = DECISIONS[body.action]; e.status_label = LABELS[e.status]; e.decided_by = "consultant";
       e.decision_reason = (body.reason || "").trim(); e.seen_by_consultant = true;
       if (body.action === "keep_cross_check") e.links.forEach((l) => { if (l.role === "supports_test") l.role = "cross_check"; });
       const word = { approve: "Accepted", keep_client_reported: "Accepted as the client's data:", keep_belief: "Kept as the client's claim:", keep_cross_check: "Kept as a sense check only:", reject: "Rejected" }[body.action];
-      log(c, "consultant", e.trip_id ? 9 : 7, `${word} ${e.id}${e.decision_reason ? ": " + e.decision_reason : ""}`);
+      log(c, "consultant", e.trip_id ? 9 : 7, `${word} ${e.id}${note}${e.decision_reason ? ": " + e.decision_reason : ""}`);
       review(b); return ok();
     }
     if ((mm = rest.match(/^\/evidence\/(E\d+)\/links$/))) { const e = b.evidence.find((x) => x.id === mm[1]); e.links = body.map((r) => Object.assign({ evidence_id: e.id, proposed_by: "consultant", confirmed: true }, r)); return ok(); }
@@ -296,6 +378,7 @@
     }
     if ((mm = rest.match(/^\/review\/spot-check\/(E\d+)$/))) {
       const e = b.evidence.find((x) => x.id === mm[1]);
+      if (body.skip) { e.spot_check_result = "skipped"; log(c, "consultant", 7, `Quick double-check skipped by you (${e.id})`); review(b); return ok(); }
       e.spot_check_result = body.matches ? "matches" : "does_not_match"; e.seen_by_consultant = true;
       if (!body.matches) { e.status = "needs_decision"; e.status_label = LABELS.needs_decision; e.bucket = "decision";
         e.checklist_json = e.checklist_json.concat([{ test: "Quick double-check", pass: false, threshold: "matches its source", actual: "spot check did not match" }]); }
@@ -320,6 +403,7 @@
     }
     if (rest === "/addup/run") { runJob(id, "addup", "s10_added", 2800, (nb) => { nb.overall = null; nb.summary = null; }); return ok(); }
     if (rest === "/whatif") return ok(whatIf(b, body || {}));
+    if (rest === "/plan/retarget") return retarget(c, body || {});
     if (rest === "/unknowns") return ok((b.summary || {}).unknowns || []);
     if (rest === "/conclusion") {
       if (!(body.text || "").trim()) return err(400, "Write your conclusion in the box first.");
@@ -410,8 +494,8 @@
       user: "Nothing to do. Reads the counts and merged duplicates, then clicks Review evidence.",
       app: "Drops exact copies before reading (free), reads each source, checks every quote word for word, converts units, merges copies of the same original, rates source quality, links evidence to ideas, works out any calculations in code, and runs the 9-test quality check." },
     { key: "step7", n: 7, name: "Review the evidence", api: NONE,
-      user: "Makes a call on each item (Accept or Reject with a reason), marks each passed source as Seen, does the quick double-check, ticks the box, clicks Run tests.",
-      app: "Records each decision in History. Run tests stays disabled until every item is decided. Then plain code (no AI) gives each idea its result and confidence." },
+      user: "Makes a call on each item (Accept, or Reject with a one-click reason), marks each passed source as Seen, ticks the box, clicks Run tests. The quick double-check of one source is optional (Matches, Doesn't match or Skip).",
+      app: "Records each decision in History. Accepting an item with a calculation also checks its formula; only a formula that mixes sources or uses an assumption asks for \"Accept and confirm formula\". Run tests stays disabled until every item is decided. Then plain code (no AI) gives each idea its result and confidence." },
     { key: "step8", n: 8, name: "Results", api: NONE,
       user: "Reads each idea against its target, opens Full reasoning, then clicks Fill the gaps (or Add it up).",
       app: "Shows the results computed in code at Run tests. Same evidence in, same result out." },
@@ -422,8 +506,8 @@
       user: "Reads the overall answer and the sentences, opens evidence chips. Clicks Stress-test.",
       app: "Applies the rule locked at step 3 in code. Then writes 3 to 5 sentences; code rejects any sentence that cites a missing id or a number not in the data, and falls back to a plain summary if needed." },
     { key: "step11", n: 11, name: "What if...", api: NONE,
-      user: "Moves sliders for each target and assumption, watches the cards and the answer change, clicks Reset, then Write conclusion.",
-      app: "Recomputes targets and results in code without saving anything. The locked plan never changes." },
+      user: "Moves sliders for each target and assumption and watches the cards and the answer change. To make a value real, clicks Use this as the new target and confirms. Then Write conclusion.",
+      app: "Sliders recompute targets and results in code without saving anything. Use this as the new target reopens the plan, changes the target, locks it again, re-runs the tests and the adding-up, and records the change in History. Reviewed evidence is kept." },
     { key: "step12", n: 12, name: "Your conclusion", api: NONE,
       user: "Writes the conclusion, clicks Save conclusion, then Print or save PDF, Download Markdown or Download JSON.",
       app: "Saves the consultant's text. The tool never writes the conclusion. Exports are built in code from the stored case." },
@@ -433,7 +517,7 @@
     { key: "help", name: "Help (drawer)", api: NONE,
       user: "Opens Help from the top bar.", app: "Shows the 12 steps in one line each and six definitions." },
     { key: "settings", name: "Settings (drawer)", api: LIVE, apis: "Run checks only: one tiny Claude call per model and one Tavily search",
-      user: "Changes data mode, fast mode, larger text; skips a sample to a step; resets or deletes the case; adds firm archive documents; runs the set-up checks.",
+      user: "Changes data mode, fast mode, larger text and the quick double-check; skips a sample to a step; resets or deletes the case; adds firm archive documents; runs the set-up checks.",
       app: "Shows today's and this case's spend against the caps. Run checks tests the database, passcode, both model names, the Claude key and the Tavily key, with a fix for each red item. Skip to step replays the sample's stored answers through the normal checks." },
   ];
   const byKey = Object.fromEntries(SCREENS.map((s) => [s.key, s]));
